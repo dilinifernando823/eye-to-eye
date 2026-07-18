@@ -229,7 +229,6 @@ Cardiff Metropolitan University.
   and product information
 - **Cardiff Metropolitan University / ICBT Campus** — For academic support
 - **Google MediaPipe Team** — For the FaceMesh library
-- **Anthropic** — For the Claude AI API
 
 ---
 
