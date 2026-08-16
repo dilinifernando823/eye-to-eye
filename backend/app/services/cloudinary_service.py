@@ -43,5 +43,17 @@ def upload_gltf_model(file_bytes: bytes, filename: str, product_id: int) -> dict
     return {"url": result["secure_url"], "public_id": result["public_id"]}
 
 
+def upload_banner_image(file_bytes: bytes, filename: str) -> dict[str, str]:
+    result = cloudinary.uploader.upload(
+        file_bytes,
+        folder="eye-to-eye/banners",
+        filename=filename,
+        quality="auto",
+        fetch_format="auto",
+        transformation=[{"width": 1920, "height": 800, "crop": "limit"}],
+    )
+    return {"url": result["secure_url"], "public_id": result["public_id"]}
+
+
 def delete_file(public_id: str) -> None:
     cloudinary.uploader.destroy(public_id)

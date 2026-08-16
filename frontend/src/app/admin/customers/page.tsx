@@ -1,100 +1,151 @@
-import { Users, Mail, Phone, MapPin, Shield } from 'lucide-react'
-import { formatDate } from '@/lib/utils'
-import Badge from '@/components/ui/Badge'
-import type { User } from '@/types'
+'use client'
 
-const mockCustomers: User[] = [
-  { id: 1, email: 'chamara@example.com', full_name: 'Chamara Perera', phone: '0712345678', role: 'customer', delivery_address: '45 Galle Road', city: 'Colombo', created_at: '2024-01-15T10:00:00Z' },
-  { id: 2, email: 'nisha@example.com', full_name: 'Nisha Fernando', phone: '0723456789', role: 'customer', delivery_address: '12 Kandy Road', city: 'Kandy', created_at: '2024-01-20T10:00:00Z' },
-  { id: 3, email: 'ravi@example.com', full_name: 'Ravi Wickramasinghe', phone: '0734567890', role: 'customer', delivery_address: '7 Temple Road', city: 'Galle', created_at: '2024-02-05T10:00:00Z' },
-  { id: 4, email: 'amali@example.com', full_name: 'Amali Silva', phone: '0745678901', role: 'customer', delivery_address: '33 Beach Road', city: 'Negombo', created_at: '2024-02-15T10:00:00Z' },
-  { id: 5, email: 'admin@eyetoeye.lk', full_name: 'Admin User', phone: '0112345678', role: 'admin', delivery_address: '123 Galle Road', city: 'Colombo', created_at: '2024-01-01T10:00:00Z' },
+import { useState } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { Star, Users } from 'lucide-react'
+import { useAdminCustomers } from '@/hooks/useAdminCustomers'
+import DataTable, { type DataTableColumn } from '@/components/admin/DataTable'
+import SearchInput from '@/components/admin/SearchInput'
+import Pagination from '@/components/admin/Pagination'
+import StatusBadge from '@/components/admin/StatusBadge'
+import { formatDate, formatPrice } from '@/lib/utils'
+import type { AdminCustomer } from '@/types/admin'
+
+const AVATAR_COLORS = [
+  'bg-red-400',
+  'bg-blue-400',
+  'bg-green-400',
+  'bg-purple-400',
+  'bg-amber-400',
+  'bg-pink-400',
+  'bg-indigo-400',
 ]
 
+function avatarColor(name: string): string {
+  return AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length]
+}
+
 export default function AdminCustomersPage() {
+  const router = useRouter()
+  const [page, setPage] = useState(1)
+  const [search, setSearch] = useState('')
+  const [activeOnly, setActiveOnly] = useState(false)
+
+  const { data, isLoading } = useAdminCustomers({
+    page,
+    size: 20,
+    search: search || undefined,
+    is_active: activeOnly ? true : undefined,
+  })
+
+  const columns: DataTableColumn<AdminCustomer>[] = [
+    {
+      header: 'Customer',
+      accessor: (customer) => (
+        <div className="flex items-center gap-3">
+          <div
+            className={`h-9 w-9 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0 ${avatarColor(customer.full_name)}`}
+          >
+            {customer.full_name.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <p className="font-medium text-[#1a1a2e]">{customer.full_name}</p>
+            <p className="text-xs text-gray-400">{customer.email}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      header: 'Phone',
+      accessor: (customer) => <span className="text-gray-500">{customer.phone ?? '—'}</span>,
+    },
+    { header: 'Joined', accessor: (customer) => formatDate(customer.created_at) },
+    {
+      header: 'Orders',
+      align: 'center',
+      accessor: (customer) => (
+        <span className="bg-gray-100 text-gray-700 text-xs font-semibold px-2 py-1 rounded-full">
+          {customer.total_orders}
+        </span>
+      ),
+    },
+    {
+      header: 'Total Spent',
+      accessor: (customer) => (
+        <span className="font-semibold text-[#1a1a2e]">{formatPrice(customer.total_spent)}</span>
+      ),
+    },
+    {
+      header: 'Loyalty Pts',
+      accessor: (customer) => (
+        <span className="flex items-center gap-1 text-gray-600">
+          <Star className="h-3.5 w-3.5 text-yellow-400 fill-current" /> {customer.loyalty_balance}
+        </span>
+      ),
+    },
+    {
+      header: 'Status',
+      accessor: (customer) => <StatusBadge status={customer.is_active ? 'active' : 'inactive'} />,
+    },
+    {
+      header: 'Actions',
+      align: 'right',
+      accessor: (customer) => (
+        <Link
+          href={`/admin/customers/${customer.id}`}
+          onClick={(e) => e.stopPropagation()}
+          className="text-sm font-medium text-[#e94560] hover:underline"
+        >
+          View
+        </Link>
+      ),
+    },
+  ]
+
   return (
     <div className="p-6 lg:p-8">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Customers</h1>
-        <p className="text-gray-500 text-sm mt-0.5">{mockCustomers.length} registered users</p>
+        <h1 className="text-2xl font-bold text-[#1a1a2e]">Customers</h1>
+        <p className="text-gray-500 text-sm mt-0.5">{data?.total ?? 0} total customers</p>
       </div>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        {[
-          { label: 'Total Customers', value: mockCustomers.filter((u) => u.role === 'customer').length, icon: Users, color: 'bg-blue-50 text-blue-700' },
-          { label: 'Admin Users', value: mockCustomers.filter((u) => u.role === 'admin').length, icon: Shield, color: 'bg-purple-50 text-purple-700' },
-          { label: 'New This Month', value: 3, icon: Users, color: 'bg-green-50 text-green-700' },
-        ].map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
-            <div className={`${color} rounded-xl p-3`}>
-              <Icon className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900">{value}</p>
-              <p className="text-sm text-gray-500">{label}</p>
-            </div>
-          </div>
-        ))}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+        <SearchInput
+          value={search}
+          onChange={(value) => {
+            setSearch(value)
+            setPage(1)
+          }}
+          placeholder="Search by name or email..."
+        />
+        <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={activeOnly}
+            onChange={(e) => {
+              setActiveOnly(e.target.checked)
+              setPage(1)
+            }}
+            className="rounded border-gray-300"
+          />
+          Active only
+        </label>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
-                {['Name', 'Email', 'Phone', 'Location', 'Role', 'Joined'].map((h) => (
-                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {mockCustomers.map((customer) => (
-                <tr key={customer.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3.5">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <span className="text-blue-700 font-bold text-xs">
-                          {customer.full_name.charAt(0)}
-                        </span>
-                      </div>
-                      <span className="font-medium text-gray-900">{customer.full_name}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <div className="flex items-center gap-1.5 text-gray-500">
-                      <Mail className="h-3.5 w-3.5" />
-                      {customer.email}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <div className="flex items-center gap-1.5 text-gray-500 whitespace-nowrap">
-                      <Phone className="h-3.5 w-3.5" />
-                      {customer.phone}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <div className="flex items-center gap-1.5 text-gray-500 whitespace-nowrap">
-                      <MapPin className="h-3.5 w-3.5" />
-                      {customer.city}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <Badge variant={customer.role === 'admin' ? 'purple' : 'info'} className="capitalize">
-                      {customer.role}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3.5 text-gray-500 whitespace-nowrap">
-                    {formatDate(customer.created_at)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <DataTable
+        columns={columns}
+        data={data?.items ?? []}
+        keyExtractor={(customer) => customer.id}
+        onRowClick={(customer) => router.push(`/admin/customers/${customer.id}`)}
+        isLoading={isLoading}
+        emptyIcon={Users}
+        emptyTitle="No customers found"
+      />
+
+      {data && (
+        <Pagination page={data.page} pages={data.pages} total={data.total} onPageChange={setPage} />
+      )}
     </div>
   )
 }

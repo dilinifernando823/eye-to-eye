@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 import { Heart, Eye } from 'lucide-react'
 import type { Product } from '@/types'
 import { formatPrice, getMinPrice, getPrimaryImage } from '@/lib/utils'
@@ -12,6 +13,7 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
+  const router = useRouter()
   const [isWishlisted, setIsWishlisted] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
 
@@ -19,6 +21,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   const secondaryImage = product.images.find((img) => !img.is_primary)?.image_url
   const minPrice = getMinPrice(product.variants)
   const displayImage = isHovered && secondaryImage ? secondaryImage : primaryImage
+  const hasTryOn = product.has_3d_model && product.images.some((img) => img.is_virtual_try_on)
 
   return (
     <div
@@ -38,11 +41,18 @@ export default function ProductCard({ product }: ProductCardProps) {
 
           {/* Badges */}
           <div className="absolute top-3 left-3 flex flex-col gap-1">
-            {product.has_3d_model && (
-              <span className="inline-flex items-center gap-1 bg-blue-700 text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+            {hasTryOn && (
+              <button
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  router.push(`/product/${product.id}?tryOn=true`)
+                }}
+                className="inline-flex items-center gap-1 bg-blue-700 text-white text-xs font-semibold px-2.5 py-1 rounded-full hover:bg-blue-800 transition-colors"
+              >
                 <Eye className="h-3 w-3" />
                 Try On
-              </span>
+              </button>
             )}
           </div>
 

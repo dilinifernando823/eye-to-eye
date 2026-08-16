@@ -17,8 +17,8 @@ export const mockProducts: Product[] = [
     is_active: true,
     created_at: '2024-01-15T10:00:00Z',
     images: [
-      { id: 1, product_id: 1, image_url: '/products/spectacles/specone.jpg', is_primary: true, display_order: 1 },
-      { id: 2, product_id: 1, image_url: '/products/spectacles/spectwo.jpg', is_primary: false, display_order: 2 },
+      { id: 1, product_id: 1, image_url: '/products/spectacles/specone.jpg', is_primary: true, is_virtual_try_on: true, display_order: 1 },
+      { id: 2, product_id: 1, image_url: '/products/spectacles/spectwo.jpg', is_primary: false, is_virtual_try_on: false, display_order: 2 },
     ],
     variants: [
       { id: 1, product_id: 1, lens_type: 'Frame Only', sku: 'RB-TF-001', price: 4500, stock_quantity: 15 },
@@ -42,8 +42,8 @@ export const mockProducts: Product[] = [
     is_active: true,
     created_at: '2024-01-20T10:00:00Z',
     images: [
-      { id: 3, product_id: 2, image_url: '/products/spectacles/specthree.jpg', is_primary: true, display_order: 1 },
-      { id: 4, product_id: 2, image_url: '/products/spectacles/spectwo.jpg', is_primary: false, display_order: 2 },
+      { id: 3, product_id: 2, image_url: '/products/spectacles/specthree.jpg', is_primary: true, is_virtual_try_on: false, display_order: 1 },
+      { id: 4, product_id: 2, image_url: '/products/spectacles/spectwo.jpg', is_primary: false, is_virtual_try_on: false, display_order: 2 },
     ],
     variants: [
       { id: 4, product_id: 2, lens_type: 'Frame Only', sku: 'OA-SMA-001', price: 6500, stock_quantity: 8 },
@@ -67,8 +67,8 @@ export const mockProducts: Product[] = [
     is_active: true,
     created_at: '2024-02-01T10:00:00Z',
     images: [
-      { id: 5, product_id: 3, image_url: '/products/sunglasses/sunglassone.jpg', is_primary: true, display_order: 1 },
-      { id: 6, product_id: 3, image_url: '/products/sunglasses/sunglasstwo.jpg', is_primary: false, display_order: 2 },
+      { id: 5, product_id: 3, image_url: '/products/sunglasses/sunglassone.jpg', is_primary: true, is_virtual_try_on: false, display_order: 1 },
+      { id: 6, product_id: 3, image_url: '/products/sunglasses/sunglasstwo.jpg', is_primary: false, is_virtual_try_on: false, display_order: 2 },
     ],
     variants: [
       { id: 7, product_id: 3, lens_type: 'Polarized', sku: 'PR-RR-001', price: 8500, stock_quantity: 20 },
@@ -91,8 +91,8 @@ export const mockProducts: Product[] = [
     is_active: true,
     created_at: '2024-02-10T10:00:00Z',
     images: [
-      { id: 7, product_id: 4, image_url: '/products/sunglasses/sunglassone.jpg', is_primary: true, display_order: 1 },
-      { id: 8, product_id: 4, image_url: '/products/sunglasses/sunglasstwo.jpg', is_primary: false, display_order: 2 },
+      { id: 7, product_id: 4, image_url: '/products/sunglasses/sunglassone.jpg', is_primary: true, is_virtual_try_on: false, display_order: 1 },
+      { id: 8, product_id: 4, image_url: '/products/sunglasses/sunglasstwo.jpg', is_primary: false, is_virtual_try_on: false, display_order: 2 },
     ],
     variants: [
       { id: 9, product_id: 4, lens_type: 'UV400', sku: 'RB-CW-001', price: 5500, stock_quantity: 25 },
@@ -115,8 +115,8 @@ export const mockProducts: Product[] = [
     is_active: true,
     created_at: '2024-02-15T10:00:00Z',
     images: [
-      { id: 9, product_id: 5, image_url: '/products/contact-lenses/lenseone.jpg', is_primary: true, display_order: 1 },
-      { id: 10, product_id: 5, image_url: '/products/contact-lenses/lenstwo.jpg', is_primary: false, display_order: 2 },
+      { id: 9, product_id: 5, image_url: '/products/contact-lenses/lenseone.jpg', is_primary: true, is_virtual_try_on: false, display_order: 1 },
+      { id: 10, product_id: 5, image_url: '/products/contact-lenses/lenstwo.jpg', is_primary: false, is_virtual_try_on: false, display_order: 2 },
     ],
     variants: [
       { id: 11, product_id: 5, lens_type: 'Daily (30 pack)', sku: 'CL-DC-001', price: 2500, stock_quantity: 50 },
@@ -139,8 +139,8 @@ export const mockProducts: Product[] = [
     is_active: true,
     created_at: '2024-02-20T10:00:00Z',
     images: [
-      { id: 11, product_id: 6, image_url: '/products/contact-lenses/lensthree.jpg', is_primary: true, display_order: 1 },
-      { id: 12, product_id: 6, image_url: '/products/contact-lenses/lensfour.jpg', is_primary: false, display_order: 2 },
+      { id: 11, product_id: 6, image_url: '/products/contact-lenses/lensthree.jpg', is_primary: true, is_virtual_try_on: false, display_order: 1 },
+      { id: 12, product_id: 6, image_url: '/products/contact-lenses/lensfour.jpg', is_primary: false, is_virtual_try_on: false, display_order: 2 },
     ],
     variants: [
       { id: 13, product_id: 6, lens_type: 'Monthly (6 pack)', sku: 'CL-MT-001', price: 4500, stock_quantity: 20 },

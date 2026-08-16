@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
+import { useSearchParams } from 'next/navigation'
 import {
   Heart,
   ShoppingCart,
@@ -21,13 +22,19 @@ import VirtualTryOn from '@/components/ar/VirtualTryOn'
 import Badge from '@/components/ui/Badge'
 
 export default function ProductDetailClient({ product }: { product: Product }) {
+  const searchParams = useSearchParams()
+  const tryOnPreviewImage = product.images.find((img) => img.is_virtual_try_on)
+  const canTryOn = product.has_3d_model && !!tryOnPreviewImage
+
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
     product.variants[0] ?? null
   )
   const [quantity, setQuantity] = useState(1)
   const [activeImage, setActiveImage] = useState(0)
   const [isWishlisted, setIsWishlisted] = useState(false)
-  const [showTryOn, setShowTryOn] = useState(false)
+  const [showTryOn, setShowTryOn] = useState(
+    canTryOn && searchParams.get('tryOn') === 'true'
+  )
   const [addedToCart, setAddedToCart] = useState(false)
 
   const { addItem, openCart } = useCartStore()
@@ -91,7 +98,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                   priority
                   unoptimized
                 />
-                {product.has_3d_model && (
+                {canTryOn && (
                   <button
                     onClick={() => setShowTryOn(true)}
                     className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-white/90 backdrop-blur-sm text-blue-700 border border-blue-200 font-semibold px-5 py-2.5 rounded-full shadow-md hover:bg-white hover:shadow-lg transition-all text-sm"
@@ -131,7 +138,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                 <Badge variant="info" className="capitalize">
                   {product.category.replace('_', ' ')}
                 </Badge>
-                {product.has_3d_model && (
+                {canTryOn && (
                   <Badge variant="success">Virtual Try-On Available</Badge>
                 )}
               </div>
@@ -246,10 +253,10 @@ export default function ProductDetailClient({ product }: { product: Product }) {
         </div>
       </div>
 
-      {showTryOn && (
+      {showTryOn && tryOnPreviewImage && (
         <VirtualTryOn
           productName={product.name}
-          imageUrl={getPrimaryImage(product.images)}
+          imageUrl={tryOnPreviewImage.image_url}
           onClose={() => setShowTryOn(false)}
         />
       )}

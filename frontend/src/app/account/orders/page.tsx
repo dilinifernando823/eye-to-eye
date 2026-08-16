@@ -53,7 +53,7 @@ const mockOrders: Order[] = [
             gltf_model_url: null,
             is_active: true,
             created_at: '2024-01-15T10:00:00Z',
-            images: [{ id: 1, product_id: 1, image_url: 'https://picsum.photos/800/600?random=1', is_primary: true, display_order: 1 }],
+            images: [{ id: 1, product_id: 1, image_url: 'https://picsum.photos/800/600?random=1', is_primary: true, is_virtual_try_on: false, display_order: 1 }],
             variants: [],
           },
         },

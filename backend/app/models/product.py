@@ -63,6 +63,7 @@ class ProductImage(Base):
     image_url: Mapped[str] = mapped_column(String(500), nullable=False)
     cloudinary_public_id: Mapped[str] = mapped_column(String(255), nullable=False)
     is_primary: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_virtual_try_on: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     display_order: Mapped[int] = mapped_column(Integer, default=0)
 
     product: Mapped["Product"] = relationship(back_populates="images")

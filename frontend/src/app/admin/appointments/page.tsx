@@ -1,126 +1,306 @@
 'use client'
 
-import { useState } from 'react'
-import { CheckCircle, XCircle } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, List } from 'lucide-react'
+import { useAdminAppointments } from '@/hooks/useAdminAppointments'
+import DataTable, { type DataTableColumn } from '@/components/admin/DataTable'
+import FilterBar from '@/components/admin/FilterBar'
+import Pagination from '@/components/admin/Pagination'
+import StatusBadge from '@/components/admin/StatusBadge'
+import LoadingSpinner from '@/components/admin/LoadingSpinner'
+import EmptyState from '@/components/admin/EmptyState'
 import { formatDate } from '@/lib/utils'
-import Badge from '@/components/ui/Badge'
-import type { Appointment } from '@/types'
+import type { AdminAppointment } from '@/types/admin'
 
-const mockAppointments: Appointment[] = [
-  { id: 1, user_id: 1, appointment_date: '2024-03-22', appointment_time: '9:00 AM', status: 'pending', notes: 'First visit, long-distance issue', created_at: '2024-03-18T10:00:00Z' },
-  { id: 2, user_id: 2, appointment_date: '2024-03-22', appointment_time: '10:00 AM', status: 'confirmed', notes: '', created_at: '2024-03-17T10:00:00Z' },
-  { id: 3, user_id: 3, appointment_date: '2024-03-23', appointment_time: '2:00 PM', status: 'completed', notes: 'Follow-up for new prescription', created_at: '2024-03-15T10:00:00Z' },
-  { id: 4, user_id: 4, appointment_date: '2024-03-24', appointment_time: '11:00 AM', status: 'cancelled', notes: '', created_at: '2024-03-14T10:00:00Z' },
-]
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
-const customerNames: Record<number, string> = {
-  1: 'Chamara Perera',
-  2: 'Nisha Fernando',
-  3: 'Ravi Wickramasinghe',
-  4: 'Amali Silva',
+function pad(n: number): string {
+  return String(n).padStart(2, '0')
 }
 
-const STATUS_BADGE: Record<Appointment['status'], 'warning' | 'info' | 'success' | 'error'> = {
-  pending: 'warning',
-  confirmed: 'info',
-  completed: 'success',
-  cancelled: 'error',
+function formatTime(time: string): string {
+  const [hourStr, minuteStr] = time.split(':')
+  const hour = Number(hourStr)
+  const suffix = hour >= 12 ? 'PM' : 'AM'
+  const displayHour = hour % 12 === 0 ? 12 : hour % 12
+  return `${displayHour}:${minuteStr} ${suffix}`
 }
-
-const FILTER_TABS = ['All', 'Pending', 'Confirmed', 'Completed', 'Cancelled'] as const
 
 export default function AdminAppointmentsPage() {
-  const [activeTab, setActiveTab] = useState<string>('All')
-  const [statuses, setStatuses] = useState<Record<number, Appointment['status']>>(
-    Object.fromEntries(mockAppointments.map((a) => [a.id, a.status]))
-  )
+  const router = useRouter()
+  const [view, setView] = useState<'calendar' | 'list'>('calendar')
 
-  const filtered = mockAppointments.filter((a) =>
-    activeTab === 'All' ? true : statuses[a.id] === activeTab.toLowerCase()
-  )
+  // List view state
+  const [page, setPage] = useState(1)
+  const [statusFilter, setStatusFilter] = useState('')
 
-  const confirm = (id: number) =>
-    setStatuses((prev) => ({ ...prev, [id]: 'confirmed' }))
+  // Calendar view state
+  const today = new Date()
+  const [year, setYear] = useState(today.getFullYear())
+  const [month, setMonth] = useState(today.getMonth())
+  const [selectedDay, setSelectedDay] = useState<string | null>(null)
 
-  const cancel = (id: number) =>
-    setStatuses((prev) => ({ ...prev, [id]: 'cancelled' }))
+  const listQuery = useAdminAppointments({
+    page,
+    size: 20,
+    status: statusFilter || undefined,
+  })
+
+  const monthStart = `${year}-${pad(month + 1)}-01`
+  const lastDay = new Date(year, month + 1, 0).getDate()
+  const monthEnd = `${year}-${pad(month + 1)}-${pad(lastDay)}`
+
+  const calendarQuery = useAdminAppointments({
+    date_from: monthStart,
+    date_to: monthEnd,
+    size: 200,
+  })
+
+  const appointmentsByDay = useMemo(() => {
+    const map = new Map<string, AdminAppointment[]>()
+    for (const appt of calendarQuery.data?.items ?? []) {
+      const list = map.get(appt.appointment_date) ?? []
+      list.push(appt)
+      map.set(appt.appointment_date, list)
+    }
+    return map
+  }, [calendarQuery.data])
+
+  const firstWeekday = new Date(year, month, 1).getDay()
+  const cells: (number | null)[] = [
+    ...Array.from({ length: firstWeekday }, () => null),
+    ...Array.from({ length: lastDay }, (_, i) => i + 1),
+  ]
+
+  const goToMonth = (delta: number) => {
+    const date = new Date(year, month + delta, 1)
+    setYear(date.getFullYear())
+    setMonth(date.getMonth())
+    setSelectedDay(null)
+  }
+
+  const todayKey = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`
+
+  const columns: DataTableColumn<AdminAppointment>[] = [
+    { header: 'Date', accessor: (appt) => formatDate(appt.appointment_date) },
+    { header: 'Time', accessor: (appt) => formatTime(appt.appointment_time) },
+    {
+      header: 'Customer',
+      accessor: (appt) => (
+        <div>
+          <p className="font-medium text-[#1a1a2e]">{appt.user.full_name}</p>
+          <p className="text-xs text-gray-400">{appt.user.email}</p>
+        </div>
+      ),
+    },
+    { header: 'Status', accessor: (appt) => <StatusBadge status={appt.status} /> },
+    {
+      header: 'Notes',
+      accessor: (appt) => (
+        <span className="text-gray-500">
+          {appt.notes ? (appt.notes.length > 40 ? `${appt.notes.slice(0, 40)}...` : appt.notes) : '—'}
+        </span>
+      ),
+    },
+    {
+      header: 'Actions',
+      align: 'right',
+      accessor: (appt) => (
+        <Link
+          href={`/admin/appointments/${appt.id}`}
+          onClick={(e) => e.stopPropagation()}
+          className="text-sm font-medium text-[#e94560] hover:underline"
+        >
+          View
+        </Link>
+      ),
+    },
+  ]
 
   return (
     <div className="p-6 lg:p-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Appointments</h1>
-        <p className="text-gray-500 text-sm mt-0.5">{mockAppointments.length} total appointments</p>
-      </div>
-
-      {/* Filter tabs */}
-      <div className="flex gap-2 mb-5 overflow-x-auto pb-1">
-        {FILTER_TABS.map((tab) => (
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-[#1a1a2e]">Appointments</h1>
+          <p className="text-gray-500 text-sm mt-0.5">Manage eye test bookings</p>
+        </div>
+        <div className="flex items-center gap-1 bg-white rounded-lg shadow-sm p-1 border border-gray-100">
           <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
-              activeTab === tab
-                ? 'bg-blue-700 text-white'
-                : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+            onClick={() => setView('calendar')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+              view === 'calendar' ? 'bg-[#1a1a2e] text-white' : 'text-gray-500'
             }`}
           >
-            {tab}
+            <CalendarIcon className="h-4 w-4" /> Calendar
           </button>
-        ))}
-      </div>
-
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
-                {['Customer', 'Date', 'Time', 'Status', 'Notes', 'Actions'].map((h) => (
-                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((appt) => (
-                <tr key={appt.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3.5 font-medium text-gray-900">{customerNames[appt.user_id]}</td>
-                  <td className="px-4 py-3.5 text-gray-500 whitespace-nowrap">{formatDate(appt.appointment_date)}</td>
-                  <td className="px-4 py-3.5 text-gray-600">{appt.appointment_time}</td>
-                  <td className="px-4 py-3.5">
-                    <Badge variant={STATUS_BADGE[statuses[appt.id]]} className="capitalize">
-                      {statuses[appt.id]}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3.5 text-gray-500 max-w-[200px]">
-                    <p className="line-clamp-1">{appt.notes || '—'}</p>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <div className="flex gap-2">
-                      {statuses[appt.id] === 'pending' && (
-                        <button
-                          onClick={() => confirm(appt.id)}
-                          className="flex items-center gap-1 text-xs bg-green-100 hover:bg-green-200 text-green-700 font-medium px-3 py-1.5 rounded-lg transition-colors"
-                        >
-                          <CheckCircle className="h-3.5 w-3.5" /> Confirm
-                        </button>
-                      )}
-                      {(statuses[appt.id] === 'pending' || statuses[appt.id] === 'confirmed') && (
-                        <button
-                          onClick={() => cancel(appt.id)}
-                          className="flex items-center gap-1 text-xs bg-red-100 hover:bg-red-200 text-red-600 font-medium px-3 py-1.5 rounded-lg transition-colors"
-                        >
-                          <XCircle className="h-3.5 w-3.5" /> Cancel
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <button
+            onClick={() => setView('list')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+              view === 'list' ? 'bg-[#1a1a2e] text-white' : 'text-gray-500'
+            }`}
+          >
+            <List className="h-4 w-4" /> List
+          </button>
         </div>
       </div>
+
+      {view === 'list' ? (
+        <>
+          <div className="mb-5">
+            <FilterBar
+              filters={[
+                {
+                  label: 'Status',
+                  value: statusFilter,
+                  onChange: (value) => {
+                    setStatusFilter(value)
+                    setPage(1)
+                  },
+                  options: [
+                    { label: 'All Status', value: '' },
+                    { label: 'Pending', value: 'pending' },
+                    { label: 'Confirmed', value: 'confirmed' },
+                    { label: 'Completed', value: 'completed' },
+                    { label: 'Cancelled', value: 'cancelled' },
+                  ],
+                },
+              ]}
+            />
+          </div>
+
+          <DataTable
+            columns={columns}
+            data={listQuery.data?.items ?? []}
+            keyExtractor={(appt) => appt.id}
+            onRowClick={(appt) => router.push(`/admin/appointments/${appt.id}`)}
+            isLoading={listQuery.isLoading}
+            emptyIcon={CalendarIcon}
+            emptyTitle="No appointments found"
+          />
+
+          {listQuery.data && (
+            <Pagination
+              page={listQuery.data.page}
+              pages={listQuery.data.pages}
+              total={listQuery.data.total}
+              onPageChange={setPage}
+            />
+          )}
+        </>
+      ) : (
+        <div className="bg-white rounded-xl shadow-md p-5">
+          <div className="flex items-center justify-between mb-4">
+            <button
+              onClick={() => goToMonth(-1)}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              aria-label="Previous month"
+            >
+              <ChevronLeft className="h-4 w-4 text-[#1a1a2e]" />
+            </button>
+            <h2 className="font-bold text-[#1a1a2e]">
+              {new Date(year, month).toLocaleDateString('en-US', {
+                month: 'long',
+                year: 'numeric',
+              })}
+            </h2>
+            <button
+              onClick={() => goToMonth(1)}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              aria-label="Next month"
+            >
+              <ChevronRight className="h-4 w-4 text-[#1a1a2e]" />
+            </button>
+          </div>
+
+          {calendarQuery.isLoading ? (
+            <LoadingSpinner />
+          ) : (
+            <>
+              <div className="grid grid-cols-7 gap-1.5 mb-1.5">
+                {WEEKDAYS.map((day) => (
+                  <div
+                    key={day}
+                    className="text-center text-xs font-semibold text-gray-400 py-1"
+                  >
+                    {day}
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-7 gap-1.5">
+                {cells.map((day, i) => {
+                  if (day === null) return <div key={`pad-${i}`} />
+                  const key = `${year}-${pad(month + 1)}-${pad(day)}`
+                  const dayAppointments = appointmentsByDay.get(key) ?? []
+                  const isToday = key === todayKey
+                  const isSelected = key === selectedDay
+
+                  return (
+                    <button
+                      key={key}
+                      onClick={() =>
+                        setSelectedDay((prev) => (prev === key ? null : key))
+                      }
+                      className={`aspect-square rounded-lg p-2 text-left transition-colors border ${
+                        isSelected
+                          ? 'border-[#e94560] bg-red-50'
+                          : isToday
+                          ? 'border-blue-100 bg-blue-50'
+                          : 'border-gray-100 hover:bg-gray-50'
+                      }`}
+                    >
+                      <p className="text-sm font-medium text-[#1a1a2e]">{day}</p>
+                      {dayAppointments.length > 0 && (
+                        <p className="text-[10px] font-semibold mt-1" style={{ color: '#e94560' }}>
+                          {dayAppointments.length} appt{dayAppointments.length > 1 ? 's' : ''}
+                        </p>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {selectedDay && (
+                <div className="mt-5 border-t border-gray-100 pt-4">
+                  <h3 className="font-semibold text-[#1a1a2e] mb-3">
+                    {formatDate(selectedDay)}
+                  </h3>
+                  {(appointmentsByDay.get(selectedDay) ?? []).length === 0 ? (
+                    <EmptyState title="No appointments on this day" />
+                  ) : (
+                    <div className="space-y-2">
+                      {(appointmentsByDay.get(selectedDay) ?? [])
+                        .slice()
+                        .sort((a, b) => a.appointment_time.localeCompare(b.appointment_time))
+                        .map((appt) => (
+                          <div
+                            key={appt.id}
+                            className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-2.5"
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className="text-sm font-semibold text-[#1a1a2e] w-20">
+                                {formatTime(appt.appointment_time)}
+                              </span>
+                              <span className="text-sm text-gray-600">{appt.user.full_name}</span>
+                              <StatusBadge status={appt.status} />
+                            </div>
+                            <Link
+                              href={`/admin/appointments/${appt.id}`}
+                              className="text-sm font-medium text-[#e94560] hover:underline"
+                            >
+                              View
+                            </Link>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </div>
   )
 }

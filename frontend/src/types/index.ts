@@ -14,6 +14,7 @@ export interface ProductImage {
   product_id: number
   image_url: string
   is_primary: boolean
+  is_virtual_try_on: boolean
   display_order: number
 }
 

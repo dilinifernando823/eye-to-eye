@@ -9,6 +9,7 @@ from app.core.config import settings
 from app.database import Base
 from app.models import (  # noqa: F401
     Appointment,
+    Banner,
     CartItem,
     LoyaltyTransaction,
     Order,
@@ -17,6 +18,7 @@ from app.models import (  # noqa: F401
     ProductImage,
     ProductVariant,
     ProductView,
+    SiteSetting,
     User,
     WishlistItem,
 )

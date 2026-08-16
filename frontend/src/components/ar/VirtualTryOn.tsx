@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Image from 'next/image'
 import { X, Camera, Sparkles, AlertTriangle } from 'lucide-react'
 import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision'
 import { removeBackground } from '@imgly/background-removal'
@@ -231,8 +232,30 @@ export default function VirtualTryOn({ productName, imageUrl, onClose }: Virtual
       </button>
 
       <div className="text-center max-w-md mx-auto w-full">
-        {showIntro && (
-          <>
+        {stage === 'idle' ? (
+          <div
+            className="relative mb-6 rounded-2xl overflow-hidden mx-auto aspect-square"
+            style={{ maxWidth: '360px' }}
+          >
+            <Image
+              src={imageUrl}
+              alt={productName}
+              fill
+              unoptimized
+              className="object-cover opacity-40"
+            />
+            <button
+              onClick={handleStart}
+              className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/20 hover:bg-black/30 transition-colors"
+            >
+              <span className="bg-blue-700 hover:bg-blue-600 text-white font-semibold px-8 py-3 rounded-xl transition-all duration-200 hover:scale-105 flex items-center gap-2">
+                <Camera className="h-5 w-5" />
+                Start Camera
+              </span>
+            </button>
+          </div>
+        ) : (
+          showIntro && (
             <div className="relative mb-6">
               <div className="w-36 h-36 rounded-full border-4 border-blue-500/50 flex items-center justify-center mx-auto relative">
                 <div className="absolute inset-0 rounded-full border-4 border-blue-400/20 animate-ping" />
@@ -241,7 +264,11 @@ export default function VirtualTryOn({ productName, imageUrl, onClose }: Virtual
                 </div>
               </div>
             </div>
+          )
+        )}
 
+        {showIntro && (
+          <>
             <div className="flex items-center justify-center gap-2 mb-3">
               <Sparkles className="h-5 w-5 text-blue-400" />
               <h2 className="text-2xl font-bold text-white">Virtual Try-On</h2>
@@ -253,15 +280,6 @@ export default function VirtualTryOn({ productName, imageUrl, onClose }: Virtual
               Point your camera at your face to try on these glasses
             </p>
           </>
-        )}
-
-        {stage === 'idle' && (
-          <button
-            onClick={handleStart}
-            className="bg-blue-700 hover:bg-blue-600 text-white font-semibold px-8 py-3 rounded-xl transition-all duration-200 hover:scale-105 active:scale-95"
-          >
-            Start Camera
-          </button>
         )}
 
         {(stage === 'loading-model' || stage === 'requesting-camera') && (
