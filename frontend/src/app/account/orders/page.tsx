@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Package, ChevronDown, ChevronUp, ArrowLeft } from 'lucide-react'
+import { Package, ChevronDown, ChevronUp, ArrowLeft, FileText, ExternalLink } from 'lucide-react'
 import Badge from '@/components/ui/Badge'
 import { formatPrice, formatDate } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
@@ -58,6 +58,58 @@ function OrderItemsDetail({ orderId }: { orderId: number }) {
           <p className="text-green-600">Loyalty discount applied: −{formatPrice(order.loyalty_discount)}</p>
         )}
       </div>
+
+      {order.prescription_url && (
+        <div className="mt-4 pt-4 border-t border-gray-100">
+          <p className="text-sm font-semibold text-gray-900 flex items-center gap-1.5 mb-2">
+            <FileText className="h-4 w-4 text-blue-700" /> Prescription
+          </p>
+          <a
+            href={order.prescription_url}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 text-sm text-blue-700 hover:text-blue-800 font-medium mb-3"
+          >
+            <ExternalLink className="h-3.5 w-3.5" /> View Original File
+          </a>
+          {order.prescription_notes ? (
+            <PrescriptionNotes notes={order.prescription_notes} />
+          ) : (
+            <p className="text-sm text-gray-400">Prescription analysis in progress...</p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function PrescriptionNotes({ notes }: { notes: string }) {
+  const [summary, rawText] = notes.split('---').map((part) => part.trim())
+  const lines = summary.split('\n').filter(Boolean)
+
+  return (
+    <div className="space-y-2">
+      <div className="bg-gray-50 rounded-xl p-3 space-y-1">
+        {lines.map((line, i) => {
+          const [label, ...rest] = line.split(':')
+          return (
+            <div key={i} className="flex justify-between text-xs">
+              <span className="font-medium text-gray-500">{label.trim()}</span>
+              <span className="text-gray-900 font-mono">{rest.join(':').trim() || '—'}</span>
+            </div>
+          )
+        })}
+      </div>
+      {rawText && (
+        <details className="text-xs">
+          <summary className="cursor-pointer text-gray-400 hover:text-gray-600">
+            Show raw OCR text
+          </summary>
+          <pre className="mt-2 p-3 bg-gray-50 rounded-lg text-gray-500 overflow-x-auto whitespace-pre-wrap font-mono text-xs">
+            {rawText}
+          </pre>
+        </details>
+      )}
     </div>
   )
 }
