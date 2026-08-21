@@ -6,7 +6,7 @@ from app.core.dependencies import get_current_user
 from app.database import get_db
 from app.models.loyalty import LoyaltyTransaction
 from app.models.order import CartItem, Order, OrderItem
-from app.models.product import ProductVariant
+from app.models.product import Product, ProductVariant
 from app.models.user import User
 from app.schemas.order import OrderListResponse, OrderResponse
 from app.services.cloudinary_service import upload_prescription
@@ -202,7 +202,10 @@ def get_order(
             select(Order)
             .where(Order.id == order_id)
             .options(
-                joinedload(Order.items).joinedload(OrderItem.variant).joinedload(ProductVariant.product)
+                joinedload(Order.items)
+                .joinedload(OrderItem.variant)
+                .joinedload(ProductVariant.product)
+                .joinedload(Product.images)
             )
         )
         .unique()

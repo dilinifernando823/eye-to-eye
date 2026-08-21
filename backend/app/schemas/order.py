@@ -27,7 +27,7 @@ class OrderItemResponse(BaseModel):
     variant_id: int
     quantity: int
     unit_price: float
-    variant: ProductVariantResponse
+    variant: VariantWithProductResponse
 
     model_config = ConfigDict(from_attributes=True)
 
