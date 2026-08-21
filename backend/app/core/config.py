@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     SMTP_USER: str
     SMTP_PASSWORD: str
     FRONTEND_URL: str = "http://localhost:3000"
+    TESSERACT_CMD: str | None = None
+    POPPLER_PATH: str | None = None
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
