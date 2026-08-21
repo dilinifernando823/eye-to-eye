@@ -10,12 +10,20 @@ const api = axios.create({
 
 let isRefreshing = false
 
+const AUTH_ENDPOINTS = ['/api/auth/login', '/api/auth/register', '/api/auth/refresh']
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config
+    const isAuthEndpoint = AUTH_ENDPOINTS.some((path) => originalRequest?.url?.includes(path))
 
-    if (error.response?.status === 401 && !originalRequest._retry && !isRefreshing) {
+    if (
+      error.response?.status === 401 &&
+      !isAuthEndpoint &&
+      !originalRequest._retry &&
+      !isRefreshing
+    ) {
       originalRequest._retry = true
       isRefreshing = true
 
