@@ -1,21 +1,42 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useQuery } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Calendar, Clock, CheckCircle } from 'lucide-react'
 import { appointmentSchema, type AppointmentFormData } from '@/lib/validations'
-import { mockTimeSlots } from '@/lib/mockData'
 import { formatDate } from '@/lib/utils'
+import { useAuthStore } from '@/store/authStore'
 import Input from '@/components/ui/Input'
 import api from '@/lib/api'
+import { getErrorMessage } from '@/lib/errors'
+import type { TimeSlot } from '@/types'
+
+function formatTimeLabel(time: string): string {
+  const [hourStr, minuteStr] = time.split(':')
+  const hour = Number(hourStr)
+  const suffix = hour >= 12 ? 'PM' : 'AM'
+  const displayHour = hour % 12 === 0 ? 12 : hour % 12
+  return `${displayHour}:${minuteStr} ${suffix}`
+}
 
 export default function AppointmentsPage() {
+  const router = useRouter()
+  const { isAuthenticated } = useAuthStore()
   const [selectedTime, setSelectedTime] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
   const [confirmed, setConfirmed] = useState<{ date: string; time: string } | null>(null)
 
   const today = new Date().toISOString().split('T')[0]
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace('/login?redirect=/appointments')
+    }
+  }, [isAuthenticated, router])
 
   const {
     register,
@@ -30,6 +51,17 @@ export default function AppointmentsPage() {
 
   const selectedDate = watch('appointment_date')
 
+  const { data: slots, isLoading: slotsLoading } = useQuery({
+    queryKey: ['appointment-slots', selectedDate],
+    queryFn: async () => {
+      const { data } = await api.get<TimeSlot[]>('/api/appointments/slots', {
+        params: { date: selectedDate },
+      })
+      return data
+    },
+    enabled: !!selectedDate,
+  })
+
   const handleTimeSelect = (time: string) => {
     setSelectedTime(time)
     setValue('appointment_time', time, { shouldValidate: true })
@@ -37,14 +69,19 @@ export default function AppointmentsPage() {
 
   const onSubmit = async (data: AppointmentFormData) => {
     setIsSubmitting(true)
+    setSubmitError('')
     try {
-      await api.post('/api/appointments', data)
-    } catch {
-      // Show confirmation even if API unavailable
-    } finally {
+      await api.post('/api/appointments/', data)
       setConfirmed({ date: data.appointment_date, time: data.appointment_time })
+    } catch (err: unknown) {
+      setSubmitError(getErrorMessage(err, 'Failed to book appointment. Please try again.'))
+    } finally {
       setIsSubmitting(false)
     }
+  }
+
+  if (!isAuthenticated) {
+    return null
   }
 
   if (confirmed) {
@@ -63,7 +100,7 @@ export default function AppointmentsPage() {
             </div>
             <div className="flex items-center justify-center gap-2 text-blue-700">
               <Clock className="h-5 w-5" />
-              <span className="font-semibold">{confirmed.time}</span>
+              <span className="font-semibold">{formatTimeLabel(confirmed.time)}</span>
             </div>
           </div>
           <p className="text-sm text-gray-500">
@@ -103,6 +140,12 @@ export default function AppointmentsPage() {
           </ul>
         </div>
 
+        {submitError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm mb-6">
+            {submitError}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Date */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
@@ -114,6 +157,11 @@ export default function AppointmentsPage() {
               type="date"
               min={today}
               {...register('appointment_date')}
+              onChange={(e) => {
+                register('appointment_date').onChange(e)
+                setSelectedTime('')
+                setValue('appointment_time', '')
+              }}
               error={errors.appointment_date?.message}
             />
           </div>
@@ -130,24 +178,25 @@ export default function AppointmentsPage() {
             {!selectedDate && (
               <p className="text-sm text-gray-400 mb-3">Please select a date first</p>
             )}
+            {selectedDate && slotsLoading && (
+              <p className="text-sm text-gray-400 mb-3">Loading available slots...</p>
+            )}
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-              {mockTimeSlots.map(({ time, available }) => (
+              {(slots ?? []).map(({ time, available }) => (
                 <button
                   key={time}
                   type="button"
-                  disabled={!available || !selectedDate}
+                  disabled={!available}
                   onClick={() => handleTimeSelect(time)}
                   className={`py-2.5 px-3 rounded-xl text-sm font-medium border-2 transition-all duration-200 ${
                     selectedTime === time
                       ? 'bg-blue-700 border-blue-700 text-white'
                       : !available
                       ? 'bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed'
-                      : !selectedDate
-                      ? 'border-gray-200 text-gray-300 cursor-not-allowed'
                       : 'border-gray-200 text-gray-700 hover:border-blue-400 hover:bg-blue-50'
                   }`}
                 >
-                  {time}
+                  {formatTimeLabel(time)}
                   {!available && (
                     <span className="block text-xs opacity-60">Booked</span>
                   )}
