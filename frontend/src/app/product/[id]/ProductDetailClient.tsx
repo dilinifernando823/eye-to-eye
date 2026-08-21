@@ -25,6 +25,7 @@ import {
 } from '@/hooks/useWishlist'
 import type { Product, ProductVariant } from '@/types'
 import VirtualTryOn from '@/components/ar/VirtualTryOn'
+import SimilarProductsSection from '@/components/shop/SimilarProductsSection'
 import Badge from '@/components/ui/Badge'
 
 export default function ProductDetailClient({ product }: { product: Product }) {
@@ -279,6 +280,8 @@ export default function ProductDetailClient({ product }: { product: Product }) {
             </div>
           </div>
         </div>
+
+        <SimilarProductsSection productId={product.id} limit={4} />
       </div>
 
       {showTryOn && tryOnPreviewImage && (
