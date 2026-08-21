@@ -1,84 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Package, ChevronDown, ChevronUp, ArrowLeft } from 'lucide-react'
 import Badge from '@/components/ui/Badge'
-import { formatPrice, formatDate, getOrderStatusColor } from '@/lib/utils'
-import type { Order } from '@/types'
-
-const mockOrders: Order[] = [
-  {
-    id: 1,
-    order_reference: 'ETE-00041',
-    user_id: 1,
-    status: 'delivered',
-    subtotal: 12000,
-    loyalty_discount: 0,
-    total: 12000,
-    loyalty_points_earned: 120,
-    loyalty_points_used: 0,
-    delivery_name: 'Chamara Perera',
-    delivery_address: '45 Galle Road',
-    delivery_city: 'Colombo',
-    delivery_phone: '0712345678',
-    prescription_url: null,
-    created_at: '2024-03-15T10:00:00Z',
-    items: [
-      {
-        id: 1,
-        order_id: 1,
-        variant_id: 1,
-        quantity: 1,
-        unit_price: 12000,
-        variant: {
-          id: 1,
-          product_id: 1,
-          lens_type: 'Crizal',
-          sku: 'RB-TF-003',
-          price: 12000,
-          stock_quantity: 5,
-          product: {
-            id: 1,
-            name: 'Classic Tortoise Frame',
-            description: '',
-            category: 'spectacles',
-            brand: 'RayBan',
-            gender: 'unisex',
-            frame_shape: 'Rectangle',
-            frame_material: 'Acetate',
-            colour: 'Brown',
-            has_3d_model: true,
-            gltf_model_url: null,
-            is_active: true,
-            created_at: '2024-01-15T10:00:00Z',
-            images: [{ id: 1, product_id: 1, image_url: 'https://picsum.photos/800/600?random=1', is_primary: true, is_virtual_try_on: false, display_order: 1 }],
-            variants: [],
-          },
-        },
-      },
-    ],
-  },
-  {
-    id: 2,
-    order_reference: 'ETE-00038',
-    user_id: 1,
-    status: 'processing',
-    subtotal: 5500,
-    loyalty_discount: 0,
-    total: 5500,
-    loyalty_points_earned: 55,
-    loyalty_points_used: 0,
-    delivery_name: 'Chamara Perera',
-    delivery_address: '45 Galle Road',
-    delivery_city: 'Colombo',
-    delivery_phone: '0712345678',
-    prescription_url: null,
-    created_at: '2024-03-20T10:00:00Z',
-    items: [],
-  },
-]
+import { formatPrice, formatDate } from '@/lib/utils'
+import { useAuthStore } from '@/store/authStore'
+import { useMyOrders, useOrder } from '@/hooks/useOrders'
+import type { Order, OrderListItem } from '@/types'
 
 const STATUS_BADGE: Record<Order['status'], 'warning' | 'info' | 'purple' | 'success' | 'error'> = {
   pending: 'warning',
@@ -88,8 +19,66 @@ const STATUS_BADGE: Record<Order['status'], 'warning' | 'info' | 'purple' | 'suc
   cancelled: 'error',
 }
 
+function OrderItemsDetail({ orderId }: { orderId: number }) {
+  const { data: order, isLoading } = useOrder(orderId)
+
+  if (isLoading || !order) {
+    return (
+      <div className="border-t border-gray-100 px-5 pb-5 pt-4">
+        <div className="h-14 bg-gray-50 rounded-xl animate-pulse" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="border-t border-gray-100 px-5 pb-5">
+      <div className="pt-4 space-y-3">
+        {order.items.map((item) => (
+          <div key={item.id} className="flex items-center gap-3">
+            <div className="relative h-14 w-14 rounded-xl overflow-hidden bg-gray-50 flex-shrink-0">
+              <Image
+                src={item.variant.product.images[0]?.image_url ?? '/placeholder.jpg'}
+                alt={item.variant.product.name}
+                fill
+                className="object-cover"
+                sizes="56px"
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-sm text-gray-900">{item.variant.product.name}</p>
+              <p className="text-xs text-gray-500">{item.variant.lens_type} × {item.quantity}</p>
+            </div>
+            <p className="font-semibold text-sm text-gray-900">{formatPrice(item.unit_price * item.quantity)}</p>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 pt-4 border-t border-gray-100 text-sm text-gray-500 space-y-1">
+        <p>Delivering to: {order.delivery_name}, {order.delivery_address}, {order.delivery_city}</p>
+        {order.loyalty_discount > 0 && (
+          <p className="text-green-600">Loyalty discount applied: −{formatPrice(order.loyalty_discount)}</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function OrdersPage() {
+  const router = useRouter()
+  const { isAuthenticated } = useAuthStore()
   const [expanded, setExpanded] = useState<number | null>(null)
+  const { data: orders, isLoading } = useMyOrders()
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace('/login?redirect=/account/orders')
+    }
+  }, [isAuthenticated, router])
+
+  if (!isAuthenticated) {
+    return null
+  }
+
+  const items: OrderListItem[] = orders ?? []
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -103,7 +92,13 @@ export default function OrdersPage() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {mockOrders.length === 0 ? (
+        {isLoading ? (
+          <div className="space-y-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="bg-white rounded-2xl shadow-sm border border-gray-100 h-20 animate-pulse" />
+            ))}
+          </div>
+        ) : items.length === 0 ? (
           <div className="text-center py-16">
             <div className="bg-blue-50 rounded-full p-6 inline-flex mb-4">
               <Package className="h-12 w-12 text-blue-300" />
@@ -116,7 +111,7 @@ export default function OrdersPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {mockOrders.map((order) => (
+            {items.map((order) => (
               <div key={order.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 gap-3">
                   <div className="flex items-center gap-4">
@@ -125,7 +120,9 @@ export default function OrdersPage() {
                     </div>
                     <div>
                       <p className="font-bold text-gray-900">{order.order_reference}</p>
-                      <p className="text-sm text-gray-500">{formatDate(order.created_at)}</p>
+                      <p className="text-sm text-gray-500">
+                        {formatDate(order.created_at)} · {order.items_count} item{order.items_count === 1 ? '' : 's'}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
@@ -146,30 +143,7 @@ export default function OrdersPage() {
                   </div>
                 </div>
 
-                {expanded === order.id && order.items.length > 0 && (
-                  <div className="border-t border-gray-100 px-5 pb-5">
-                    <div className="pt-4 space-y-3">
-                      {order.items.map((item) => (
-                        <div key={item.id} className="flex items-center gap-3">
-                          <div className="relative h-14 w-14 rounded-xl overflow-hidden bg-gray-50 flex-shrink-0">
-                            <Image
-                              src={item.variant.product.images[0]?.image_url ?? ''}
-                              alt={item.variant.product.name}
-                              fill
-                              className="object-cover"
-                              sizes="56px"
-                            />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm text-gray-900">{item.variant.product.name}</p>
-                            <p className="text-xs text-gray-500">{item.variant.lens_type} × {item.quantity}</p>
-                          </div>
-                          <p className="font-semibold text-sm text-gray-900">{formatPrice(item.unit_price * item.quantity)}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                {expanded === order.id && <OrderItemsDetail orderId={order.id} />}
               </div>
             ))}
           </div>
