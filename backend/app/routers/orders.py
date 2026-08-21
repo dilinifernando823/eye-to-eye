@@ -53,7 +53,7 @@ def create_order(
 
     subtotal = sum(item.variant.price * item.quantity for item in cart_items)
 
-    points_balance = (
+    points_balance = int(
         db.execute(
             select(func.coalesce(func.sum(LoyaltyTransaction.points), 0)).where(
                 LoyaltyTransaction.user_id == current_user.id
