@@ -11,7 +11,7 @@ from app.models.user import User
 from app.schemas.order import OrderListResponse, OrderResponse
 from app.services.cloudinary_service import upload_prescription
 from app.services.email_service import send_order_confirmation
-from app.services.ocr_service import extract_prescription_text
+from app.services.ocr_service import extract_prescription_text, format_prescription_notes
 
 router = APIRouter()
 
@@ -100,9 +100,10 @@ def create_order(
             prescription_cloudinary_id = None
 
         try:
-            prescription_notes = extract_prescription_text(
+            extracted_text = extract_prescription_text(
                 file_bytes, prescription.filename or "file.jpg"
             )
+            prescription_notes = format_prescription_notes(extracted_text) or None
         except Exception:
             prescription_notes = None
 
