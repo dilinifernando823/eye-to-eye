@@ -19,6 +19,7 @@ import { useAuthStore } from '@/store/authStore'
 import { profileSchema, type ProfileFormData } from '@/lib/validations'
 import Input from '@/components/ui/Input'
 import api from '@/lib/api'
+import { getErrorMessage } from '@/lib/errors'
 
 const navItems = [
   { href: '/account', label: 'My Profile', icon: User },
@@ -33,6 +34,7 @@ export default function AccountPage() {
   const router = useRouter()
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState('')
 
   const {
     register,
@@ -50,14 +52,14 @@ export default function AccountPage() {
 
   const onSubmit = async (data: ProfileFormData) => {
     setIsSaving(true)
+    setSaveError('')
     try {
-      const { data: updated } = await api.put('/api/users/me', data)
-      setUser(updated.user)
+      const { data: updated } = await api.put('/api/auth/me', data)
+      setUser(updated)
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
-    } catch {
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2500)
+    } catch (err: unknown) {
+      setSaveError(getErrorMessage(err, 'Failed to save changes. Please try again.'))
     } finally {
       setIsSaving(false)
     }
@@ -156,6 +158,9 @@ export default function AccountPage() {
                   </button>
                   {saved && (
                     <p className="text-green-600 text-sm font-medium">Changes saved!</p>
+                  )}
+                  {saveError && (
+                    <p className="text-red-600 text-sm font-medium">{saveError}</p>
                   )}
                 </div>
               </form>
