@@ -6,11 +6,13 @@ from app.models.product import Product, ProductVariant
 
 
 def get_popular_products(db: Session, limit: int = 8) -> list[Product]:
+    # Outer joins so products with zero sales yet still appear (ranked
+    # last) instead of vanishing from the "popular" fallback entirely.
     rows = (
         db.execute(
             select(Product)
-            .join(ProductVariant, ProductVariant.product_id == Product.id)
-            .join(OrderItem, OrderItem.variant_id == ProductVariant.id)
+            .outerjoin(ProductVariant, ProductVariant.product_id == Product.id)
+            .outerjoin(OrderItem, OrderItem.variant_id == ProductVariant.id)
             .where(Product.is_active == True)  # noqa: E712
             .options(joinedload(Product.images), joinedload(Product.variants))
             .group_by(Product.id)
@@ -90,3 +92,28 @@ def get_recommendations(user_id: int | None, db: Session, limit: int = 8) -> lis
                     break
 
     return recommendations
+
+
+def get_similar_products(
+    db: Session, product_id: int, category: str, limit: int = 4
+) -> list[Product]:
+    rows = (
+        db.execute(
+            select(Product)
+            .outerjoin(ProductVariant, ProductVariant.product_id == Product.id)
+            .outerjoin(OrderItem, OrderItem.variant_id == ProductVariant.id)
+            .where(
+                Product.is_active == True,  # noqa: E712
+                Product.category == category,
+                Product.id != product_id,
+            )
+            .options(joinedload(Product.images), joinedload(Product.variants))
+            .group_by(Product.id)
+            .order_by(func.count(OrderItem.id).desc())
+            .limit(limit)
+        )
+        .unique()
+        .scalars()
+        .all()
+    )
+    return list(rows)
