@@ -1,5 +1,5 @@
 from datetime import date as date_type
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
@@ -155,3 +155,37 @@ def get_appointment(
             status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found"
         )
     return appointment
+
+
+@router.delete("/{appointment_id}")
+def cancel_appointment(
+    appointment_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    appointment = db.execute(
+        select(Appointment).where(Appointment.id == appointment_id)
+    ).scalar_one_or_none()
+    if appointment is None or appointment.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found"
+        )
+
+    if appointment.status in ("completed", "cancelled"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot cancel a {appointment.status} appointment",
+        )
+
+    appointment_datetime = datetime.combine(
+        appointment.appointment_date, appointment.appointment_time
+    )
+    if datetime.now() >= appointment_datetime - timedelta(hours=24):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Appointments must be cancelled at least 24 hours in advance",
+        )
+
+    appointment.status = "cancelled"
+    db.commit()
+    return {"message": "Appointment cancelled successfully"}
