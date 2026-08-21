@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useQuery } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
@@ -16,23 +18,52 @@ import {
 } from 'lucide-react'
 import { checkoutSchema, type CheckoutFormData } from '@/lib/validations'
 import { useCartStore } from '@/store/cartStore'
+import { useAuthStore } from '@/store/authStore'
 import { formatPrice } from '@/lib/utils'
 import Input from '@/components/ui/Input'
 import api from '@/lib/api'
+import { getErrorMessage } from '@/lib/errors'
 
 type Step = 1 | 2 | 3 | 'success'
 
+// Must match backend POINTS_TO_LKR (app/routers/orders.py)
+const LKR_PER_POINT = 0.1
+
 export default function CheckoutPage() {
+  const router = useRouter()
+  const { isAuthenticated } = useAuthStore()
   const [step, setStep] = useState<Step>(1)
   const [deliveryData, setDeliveryData] = useState<CheckoutFormData | null>(null)
   const [prescriptionFile, setPrescriptionFile] = useState<File | null>(null)
   const [loyaltyPoints, setLoyaltyPoints] = useState('')
   const [orderRef, setOrderRef] = useState('')
   const [isPlacing, setIsPlacing] = useState(false)
+  const [placeError, setPlaceError] = useState('')
   const [dragOver, setDragOver] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const { items, totalPrice, clearCart } = useCartStore()
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace('/login?redirect=/checkout')
+    }
+  }, [isAuthenticated, router])
+
+  useEffect(() => {
+    if (isAuthenticated && items.length === 0 && step !== 'success') {
+      router.replace('/cart')
+    }
+  }, [isAuthenticated, items.length, step, router])
+
+  const { data: loyaltyBalance } = useQuery({
+    queryKey: ['loyalty-balance'],
+    queryFn: async () => {
+      const { data } = await api.get<{ balance: number }>('/api/loyalty/balance')
+      return data
+    },
+    enabled: isAuthenticated,
+  })
 
   const form = useForm<CheckoutFormData>({
     resolver: zodResolver(checkoutSchema),
@@ -40,10 +71,10 @@ export default function CheckoutPage() {
 
   const subtotal = totalPrice()
   const deliveryFee = subtotal >= 5000 ? 0 : 350
-  const pointsValue = Number(loyaltyPoints) * 0.5
+  const pointsValue = Number(loyaltyPoints) * LKR_PER_POINT
   const total = Math.max(0, subtotal + deliveryFee - pointsValue)
 
-  const availablePoints = 350
+  const availablePoints = loyaltyBalance?.balance ?? 0
 
   const handleFileChange = (file: File | null) => {
     if (file && ['application/pdf', 'image/jpeg', 'image/png'].includes(file.type)) {
@@ -54,27 +85,40 @@ export default function CheckoutPage() {
   const placeOrder = async () => {
     if (!deliveryData) return
     setIsPlacing(true)
+    setPlaceError('')
     try {
-      const { data } = await api.post('/api/orders', {
-        ...deliveryData,
-        items: items.map((i) => ({
-          variant_id: i.variantId,
-          quantity: i.quantity,
-          unit_price: i.price,
-        })),
-        loyalty_points_used: Number(loyaltyPoints) || 0,
+      // The backend builds the order from the server-side cart, not from
+      // the request body — sync the local cart to it first.
+      await api.delete('/api/cart/')
+      for (const item of items) {
+        await api.post('/api/cart/', { variant_id: item.variantId, quantity: item.quantity })
+      }
+
+      const formData = new FormData()
+      formData.append('delivery_name', deliveryData.delivery_name)
+      formData.append('delivery_address', deliveryData.delivery_address)
+      formData.append('delivery_city', deliveryData.delivery_city)
+      formData.append('delivery_phone', deliveryData.delivery_phone)
+      formData.append('use_loyalty_points', String(Number(loyaltyPoints) || 0))
+      if (prescriptionFile) {
+        formData.append('prescription', prescriptionFile)
+      }
+
+      const { data } = await api.post('/api/orders/', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       })
-      setOrderRef(data.order_reference ?? 'ETE-' + String(Date.now()).slice(-5))
+      setOrderRef(data.order_reference)
       clearCart()
       setStep('success')
-    } catch {
-      // Simulate success with mock ref for demo
-      setOrderRef('ETE-' + String(Date.now()).slice(-5))
-      clearCart()
-      setStep('success')
+    } catch (err: unknown) {
+      setPlaceError(getErrorMessage(err, 'Failed to place your order. Please try again.'))
     } finally {
       setIsPlacing(false)
     }
+  }
+
+  if (!isAuthenticated || (items.length === 0 && step !== 'success')) {
+    return null
   }
 
   const StepIndicator = () => (
@@ -256,7 +300,7 @@ export default function CheckoutPage() {
               </h2>
               <p className="text-sm text-gray-500 mb-4">
                 You have <span className="font-semibold text-blue-700">{availablePoints} points</span> available
-                (worth {formatPrice(availablePoints * 0.5)})
+                (worth {formatPrice(availablePoints * LKR_PER_POINT)})
               </p>
               <div className="flex gap-3 items-start">
                 <div className="flex-1">
@@ -358,6 +402,12 @@ export default function CheckoutPage() {
                 💳 Payment is collected in-store. No online payment required.
               </p>
             </div>
+
+            {placeError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
+                {placeError}
+              </div>
+            )}
 
             <div className="flex gap-3">
               <button
