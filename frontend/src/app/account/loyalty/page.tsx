@@ -1,31 +1,52 @@
 'use client'
 
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Gift, ArrowLeft, TrendingUp, Star } from 'lucide-react'
-import type { LoyaltyTransaction } from '@/types'
+import { useAuthStore } from '@/store/authStore'
+import { useLoyaltyBalance, useLoyaltyTransactions } from '@/hooks/useLoyalty'
 import { formatDate } from '@/lib/utils'
+import type { LoyaltyTransaction } from '@/types'
 
-const mockTransactions: LoyaltyTransaction[] = [
-  { id: 1, user_id: 1, transaction_type: 'earn', points: 120, description: 'Order ETE-00041', created_at: '2024-03-15T10:00:00Z' },
-  { id: 2, user_id: 1, transaction_type: 'earn', points: 55, description: 'Order ETE-00038', created_at: '2024-03-20T10:00:00Z' },
-  { id: 3, user_id: 1, transaction_type: 'redeem', points: -50, description: 'Redeemed on Order ETE-00033', created_at: '2024-02-28T10:00:00Z' },
-  { id: 4, user_id: 1, transaction_type: 'earn', points: 25, description: 'Birthday bonus', created_at: '2024-02-01T10:00:00Z' },
-  { id: 5, user_id: 1, transaction_type: 'earn', points: 200, description: 'Order ETE-00020', created_at: '2024-01-10T10:00:00Z' },
-]
+// Must match backend POINTS_TO_LKR (app/routers/orders.py)
+const LKR_PER_POINT = 0.1
 
-const totalPoints = 350
-const nextTierAt = 500
-const progress = Math.min((totalPoints / nextTierAt) * 100, 100)
-
-const tiers = [
+const TIERS = [
   { name: 'Silver', min: 0, color: 'bg-gray-200' },
   { name: 'Gold', min: 500, color: 'bg-yellow-400' },
   { name: 'Platinum', min: 1000, color: 'bg-blue-500' },
 ]
 
-const currentTier = tiers.reduce((acc, t) => (totalPoints >= t.min ? t : acc))
+const TRANSACTION_LABELS: Record<LoyaltyTransaction['transaction_type'], string> = {
+  earned_purchase: 'Purchase Reward',
+  earned_appointment: 'Appointment Reward',
+  earned_referral: 'Referral Bonus',
+  redeemed: 'Redeemed',
+  manual_adjustment: 'Manual Adjustment',
+}
 
 export default function LoyaltyPage() {
+  const router = useRouter()
+  const { isAuthenticated } = useAuthStore()
+  const { data: balance, isLoading: balanceLoading } = useLoyaltyBalance()
+  const { data: transactions, isLoading: transactionsLoading } = useLoyaltyTransactions()
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace('/login?redirect=/account/loyalty')
+    }
+  }, [isAuthenticated, router])
+
+  if (!isAuthenticated) {
+    return null
+  }
+
+  const totalPoints = balance?.balance ?? 0
+  const nextTier = TIERS.find((t) => totalPoints < t.min)
+  const currentTier = [...TIERS].reverse().find((t) => totalPoints >= t.min) ?? TIERS[0]
+  const progress = nextTier ? Math.min((totalPoints / nextTier.min) * 100, 100) : 100
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white border-b border-gray-200">
@@ -43,8 +64,10 @@ export default function LoyaltyPage() {
           <div className="flex items-start justify-between">
             <div>
               <p className="text-blue-200 text-sm font-medium mb-1">Available Points</p>
-              <p className="text-5xl font-bold">{totalPoints}</p>
-              <p className="text-blue-200 text-sm mt-1">≈ LKR {(totalPoints * 0.5).toLocaleString()} value</p>
+              <p className="text-5xl font-bold">{balanceLoading ? '—' : totalPoints}</p>
+              <p className="text-blue-200 text-sm mt-1">
+                ≈ LKR {(totalPoints * LKR_PER_POINT).toLocaleString()} value
+              </p>
             </div>
             <div className="bg-white/20 rounded-full p-3">
               <Gift className="h-7 w-7" />
@@ -58,7 +81,11 @@ export default function LoyaltyPage() {
                 <Star className="h-4 w-4 text-yellow-300 fill-yellow-300" />
                 <span className="text-sm font-semibold">{currentTier.name} Member</span>
               </div>
-              <span className="text-blue-200 text-xs">{totalPoints} / {nextTierAt} pts to Gold</span>
+              {nextTier && (
+                <span className="text-blue-200 text-xs">
+                  {totalPoints} / {nextTier.min} pts to {nextTier.name}
+                </span>
+              )}
             </div>
             <div className="bg-white/20 rounded-full h-2.5 overflow-hidden">
               <div
@@ -66,15 +93,17 @@ export default function LoyaltyPage() {
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <p className="text-blue-200 text-xs mt-1.5">
-              Earn {nextTierAt - totalPoints} more points to reach Gold tier
-            </p>
+            {nextTier && (
+              <p className="text-blue-200 text-xs mt-1.5">
+                Earn {nextTier.min - totalPoints} more points to reach {nextTier.name} tier
+              </p>
+            )}
           </div>
         </div>
 
         {/* Tiers info */}
         <div className="grid grid-cols-3 gap-4">
-          {tiers.map(({ name, min, color }) => (
+          {TIERS.map(({ name, min, color }) => (
             <div
               key={name}
               className={`bg-white rounded-2xl border shadow-sm p-4 text-center ${
@@ -101,8 +130,8 @@ export default function LoyaltyPage() {
           </div>
           <ul className="text-sm text-gray-600 space-y-1 ml-7">
             <li>• Earn 1 point per LKR 100 spent on orders</li>
-            <li>• Redeem 2 points = LKR 1 discount</li>
-            <li>• Bonus points on your birthday month</li>
+            <li>• Earn 5 points for every eye test appointment you book</li>
+            <li>• Redeem points at LKR {LKR_PER_POINT.toFixed(2)} per point at checkout</li>
           </ul>
         </div>
 
@@ -111,30 +140,42 @@ export default function LoyaltyPage() {
           <div className="p-5 border-b border-gray-100">
             <h3 className="font-bold text-gray-900">Transaction History</h3>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Date</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Description</th>
-                  <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Points</th>
-                </tr>
-              </thead>
-              <tbody>
-                {mockTransactions.map((t) => (
-                  <tr key={t.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
-                    <td className="px-5 py-3.5 text-gray-500 whitespace-nowrap">{formatDate(t.created_at)}</td>
-                    <td className="px-5 py-3.5 text-gray-700">{t.description}</td>
-                    <td className={`px-5 py-3.5 font-bold text-right whitespace-nowrap ${
-                      t.transaction_type === 'earn' ? 'text-green-600' : 'text-red-500'
-                    }`}>
-                      {t.transaction_type === 'earn' ? '+' : ''}{t.points}
-                    </td>
+          {transactionsLoading ? (
+            <div className="p-5 space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-6 bg-gray-50 rounded animate-pulse" />
+              ))}
+            </div>
+          ) : !transactions || transactions.length === 0 ? (
+            <p className="text-sm text-gray-500 p-5">No transactions yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Date</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Description</th>
+                    <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Points</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {transactions.map((t) => (
+                    <tr key={t.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
+                      <td className="px-5 py-3.5 text-gray-500 whitespace-nowrap">{formatDate(t.created_at)}</td>
+                      <td className="px-5 py-3.5 text-gray-700">
+                        {t.description || TRANSACTION_LABELS[t.transaction_type]}
+                      </td>
+                      <td className={`px-5 py-3.5 font-bold text-right whitespace-nowrap ${
+                        t.points >= 0 ? 'text-green-600' : 'text-red-500'
+                      }`}>
+                        {t.points >= 0 ? '+' : ''}{t.points}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
     </div>
