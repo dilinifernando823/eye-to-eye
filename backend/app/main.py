@@ -2,7 +2,18 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.routers import admin, ai, appointments, auth, cart, loyalty, orders, products, wishlist
+from app.routers import (
+    admin,
+    ai,
+    appointments,
+    auth,
+    cart,
+    loyalty,
+    orders,
+    products,
+    recommendations,
+    wishlist,
+)
 
 app = FastAPI(title="Eye To Eye Opticians API", version="1.0.0")
 
@@ -23,6 +34,9 @@ app.include_router(appointments.router, prefix="/api/appointments", tags=["appoi
 app.include_router(loyalty.router, prefix="/api/loyalty", tags=["loyalty"])
 app.include_router(ai.router, prefix="/api/ai", tags=["ai"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
+app.include_router(
+    recommendations.router, prefix="/api/recommendations", tags=["recommendations"]
+)
 
 
 @app.get("/")
