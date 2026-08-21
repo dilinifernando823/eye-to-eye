@@ -45,13 +45,21 @@ export interface Product {
   variants: ProductVariant[]
 }
 
+export interface ProductMini {
+  id: number
+  name: string
+  category: 'spectacles' | 'sunglasses' | 'contact_lenses'
+  brand: string | null
+  images: ProductImage[]
+}
+
 export interface OrderItem {
   id: number
   order_id: number
   variant_id: number
   quantity: number
   unit_price: number
-  variant: ProductVariant & { product: Product }
+  variant: ProductVariant & { product: ProductMini }
 }
 
 export interface Order {
@@ -69,8 +77,26 @@ export interface Order {
   delivery_city: string
   delivery_phone: string
   prescription_url: string | null
+  prescription_notes: string | null
   created_at: string
+  updated_at: string | null
   items: OrderItem[]
+}
+
+export interface OrderListItem {
+  id: number
+  order_reference: string
+  status: 'pending' | 'processing' | 'dispatched' | 'delivered' | 'cancelled'
+  total: number
+  created_at: string
+  items_count: number
+}
+
+export interface WishlistItem {
+  id: number
+  user_id: number
+  variant_id: number
+  variant: ProductVariant & { product: ProductMini }
 }
 
 export interface CartItem {
@@ -97,9 +123,15 @@ export interface Appointment {
 export interface LoyaltyTransaction {
   id: number
   user_id: number
-  transaction_type: 'earn' | 'redeem'
+  transaction_type:
+    | 'earned_purchase'
+    | 'earned_appointment'
+    | 'earned_referral'
+    | 'redeemed'
+    | 'manual_adjustment'
   points: number
-  description: string
+  reference_id: number | null
+  description: string | null
   created_at: string
 }
 
