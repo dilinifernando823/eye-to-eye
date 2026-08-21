@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import {
   Heart,
   ShoppingCart,
@@ -17,11 +17,18 @@ import {
 import Link from 'next/link'
 import { formatPrice, getPrimaryImage } from '@/lib/utils'
 import { useCartStore } from '@/store/cartStore'
+import { useAuthStore } from '@/store/authStore'
+import {
+  useAddToWishlist,
+  useRemoveFromWishlist,
+  useWishlistItemIdByVariant,
+} from '@/hooks/useWishlist'
 import type { Product, ProductVariant } from '@/types'
 import VirtualTryOn from '@/components/ar/VirtualTryOn'
 import Badge from '@/components/ui/Badge'
 
 export default function ProductDetailClient({ product }: { product: Product }) {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const tryOnPreviewImage = product.images.find((img) => img.is_virtual_try_on)
   const canTryOn = product.has_3d_model && !!tryOnPreviewImage
@@ -31,13 +38,34 @@ export default function ProductDetailClient({ product }: { product: Product }) {
   )
   const [quantity, setQuantity] = useState(1)
   const [activeImage, setActiveImage] = useState(0)
-  const [isWishlisted, setIsWishlisted] = useState(false)
   const [showTryOn, setShowTryOn] = useState(
     canTryOn && searchParams.get('tryOn') === 'true'
   )
   const [addedToCart, setAddedToCart] = useState(false)
 
   const { addItem, openCart } = useCartStore()
+  const { isAuthenticated } = useAuthStore()
+  const wishlistItemIdByVariant = useWishlistItemIdByVariant()
+  const wishlistItemId = selectedVariant
+    ? wishlistItemIdByVariant.get(selectedVariant.id)
+    : undefined
+  const isWishlisted = wishlistItemId !== undefined
+  const addToWishlist = useAddToWishlist()
+  const removeFromWishlist = useRemoveFromWishlist()
+
+  const handleToggleWishlist = () => {
+    if (!isAuthenticated) {
+      router.push(`/login?redirect=/product/${product.id}`)
+      return
+    }
+    if (!selectedVariant) return
+
+    if (isWishlisted && wishlistItemId !== undefined) {
+      removeFromWishlist.mutate(wishlistItemId)
+    } else {
+      addToWishlist.mutate(selectedVariant.id)
+    }
+  }
 
   const handleAddToCart = () => {
     if (!selectedVariant) return
@@ -230,7 +258,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                   }
                 </button>
                 <button
-                  onClick={() => setIsWishlisted((prev) => !prev)}
+                  onClick={handleToggleWishlist}
                   className={`flex items-center justify-center gap-2 border-2 font-semibold py-3.5 px-6 rounded-xl transition-all duration-200 ${
                     isWishlisted
                       ? 'border-red-500 text-red-500 bg-red-50'

@@ -7,6 +7,8 @@ import { useRouter } from 'next/navigation'
 import { Heart, Eye } from 'lucide-react'
 import type { Product } from '@/types'
 import { formatPrice, getMinPrice, getPrimaryImage } from '@/lib/utils'
+import { useAuthStore } from '@/store/authStore'
+import { useAddToWishlist, useRemoveFromWishlist, useWishlistItemIdByVariant } from '@/hooks/useWishlist'
 
 interface ProductCardProps {
   product: Product
@@ -14,8 +16,32 @@ interface ProductCardProps {
 
 export default function ProductCard({ product }: ProductCardProps) {
   const router = useRouter()
-  const [isWishlisted, setIsWishlisted] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
+  const { isAuthenticated } = useAuthStore()
+
+  const representativeVariantId = product.variants[0]?.id
+  const wishlistItemIdByVariant = useWishlistItemIdByVariant()
+  const wishlistItemId = representativeVariantId
+    ? wishlistItemIdByVariant.get(representativeVariantId)
+    : undefined
+  const isWishlisted = wishlistItemId !== undefined
+  const addToWishlist = useAddToWishlist()
+  const removeFromWishlist = useRemoveFromWishlist()
+
+  const handleToggleWishlist = (e: React.MouseEvent) => {
+    e.preventDefault()
+    if (!isAuthenticated) {
+      router.push(`/login?redirect=/product/${product.id}`)
+      return
+    }
+    if (!representativeVariantId) return
+
+    if (isWishlisted && wishlistItemId !== undefined) {
+      removeFromWishlist.mutate(wishlistItemId)
+    } else {
+      addToWishlist.mutate(representativeVariantId)
+    }
+  }
 
   const primaryImage = getPrimaryImage(product.images)
   const secondaryImage = product.images.find((img) => !img.is_primary)?.image_url
@@ -58,10 +84,7 @@ export default function ProductCard({ product }: ProductCardProps) {
 
           {/* Wishlist */}
           <button
-            onClick={(e) => {
-              e.preventDefault()
-              setIsWishlisted((prev) => !prev)
-            }}
+            onClick={handleToggleWishlist}
             className="absolute top-3 right-3 p-2 bg-white rounded-full shadow-sm hover:shadow transition-all duration-200 hover:scale-110 active:scale-95"
             aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
           >
