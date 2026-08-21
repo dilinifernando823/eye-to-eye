@@ -8,7 +8,7 @@ export function useAuth() {
   useEffect(() => {
     if (!isAuthenticated) return
     api.get('/api/auth/me')
-      .then(({ data }) => setUser(data.user))
+      .then(({ data }) => setUser(data))
       .catch(() => clearUser())
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

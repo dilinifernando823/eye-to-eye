@@ -10,6 +10,7 @@ import { registerSchema, type RegisterFormData } from '@/lib/validations'
 import { useAuthStore } from '@/store/authStore'
 import Input from '@/components/ui/Input'
 import api from '@/lib/api'
+import { getErrorMessage } from '@/lib/errors'
 
 function PasswordStrength({ password }: { password: string }) {
   const checks = [
@@ -69,17 +70,15 @@ export default function RegisterPage() {
     setIsLoading(true)
     setServerError('')
     try {
-      const { data: res } = await api.post('/api/auth/register', {
+      const { data: user } = await api.post('/api/auth/register', {
         full_name: data.full_name,
         email: data.email,
         password: data.password,
       })
-      setUser(res.user)
+      setUser(user)
       router.push('/')
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : 'Registration failed. Please try again.'
-      setServerError(message)
+      setServerError(getErrorMessage(err, 'Registration failed. Please try again.'))
     } finally {
       setIsLoading(false)
     }

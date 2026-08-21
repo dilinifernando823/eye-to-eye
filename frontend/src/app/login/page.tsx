@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Eye, EyeOff, LogIn } from 'lucide-react'
@@ -10,13 +10,23 @@ import { loginSchema, type LoginFormData } from '@/lib/validations'
 import { useAuthStore } from '@/store/authStore'
 import Input from '@/components/ui/Input'
 import api from '@/lib/api'
+import { getErrorMessage } from '@/lib/errors'
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
+  )
+}
+
+function LoginForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [serverError, setServerError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const { setUser } = useAuthStore()
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   const {
     register,
@@ -30,15 +40,19 @@ export default function LoginPage() {
     setIsLoading(true)
     setServerError('')
     try {
-      const { data: res } = await api.post('/api/auth/login', data)
-      setUser(res.user)
-      router.push('/')
+      const { data: user } = await api.post('/api/auth/login', data)
+      setUser(user)
+
+      const redirect = searchParams.get('redirect')
+      if (redirect) {
+        router.push(redirect)
+      } else if (user.role === 'admin') {
+        router.push('/admin/dashboard')
+      } else {
+        router.push('/')
+      }
     } catch (err: unknown) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : 'Invalid email or password. Please try again.'
-      setServerError(message)
+      setServerError(getErrorMessage(err, 'Invalid email or password. Please try again.'))
     } finally {
       setIsLoading(false)
     }
