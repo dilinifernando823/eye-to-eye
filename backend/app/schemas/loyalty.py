@@ -24,3 +24,6 @@ class LoyaltyBalanceSummary(BaseModel):
     balance: int
     total_earned: int
     total_redeemed: int
+    redeemable_value: float
+    earn_rate: int
+    redeem_rate: float
