@@ -51,6 +51,13 @@ export function getOrderStatusColor(status: string): string {
   }
 }
 
+export function canCancelAppointment(dateStr: string, timeStr: string, status: string): boolean {
+  if (status !== 'pending' && status !== 'confirmed') return false
+  const appointmentDateTime = new Date(`${dateStr}T${timeStr}`)
+  const twentyFourHoursFromNow = new Date(Date.now() + 24 * 60 * 60 * 1000)
+  return appointmentDateTime > twentyFourHoursFromNow
+}
+
 export function getAppointmentStatusColor(status: string): string {
   switch (status) {
     case 'pending':
