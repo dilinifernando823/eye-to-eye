@@ -26,6 +26,7 @@ const navItems = [
   { href: '/account/orders', label: 'My Orders', icon: Package },
   { href: '/account/wishlist', label: 'My Wishlist', icon: Heart },
   { href: '/account/loyalty', label: 'Loyalty Points', icon: Gift },
+  { href: '/account/appointments', label: 'My Appointments', icon: Calendar },
   { href: '/appointments', label: 'Book Appointment', icon: Calendar },
 ]
 
