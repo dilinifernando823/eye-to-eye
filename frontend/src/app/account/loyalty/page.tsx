@@ -9,9 +9,6 @@ import { useLoyaltyBalance, useLoyaltyTransactions } from '@/hooks/useLoyalty'
 import { formatDate } from '@/lib/utils'
 import type { LoyaltyTransaction } from '@/types'
 
-// Must match backend POINTS_TO_LKR (app/routers/orders.py)
-const LKR_PER_POINT = 0.1
-
 const TIERS = [
   { name: 'Silver', min: 0, color: 'bg-gray-200' },
   { name: 'Gold', min: 500, color: 'bg-yellow-400' },
@@ -66,7 +63,7 @@ export default function LoyaltyPage() {
               <p className="text-blue-200 text-sm font-medium mb-1">Available Points</p>
               <p className="text-5xl font-bold">{balanceLoading ? '—' : totalPoints}</p>
               <p className="text-blue-200 text-sm mt-1">
-                ≈ LKR {(totalPoints * LKR_PER_POINT).toLocaleString()} value
+                ≈ LKR {(balance?.redeemable_value ?? 0).toLocaleString()} value
               </p>
             </div>
             <div className="bg-white/20 rounded-full p-3">
@@ -129,9 +126,9 @@ export default function LoyaltyPage() {
             <h3 className="font-semibold text-gray-900">How to Earn Points</h3>
           </div>
           <ul className="text-sm text-gray-600 space-y-1 ml-7">
-            <li>• Earn 1 point per LKR 100 spent on orders</li>
+            <li>• Earn 1 point per LKR {balance?.earn_rate ?? 100} spent on orders</li>
             <li>• Earn 5 points for every eye test appointment you book</li>
-            <li>• Redeem points at LKR {LKR_PER_POINT.toFixed(2)} per point at checkout</li>
+            <li>• Redeem points at LKR {(balance?.redeem_rate ?? 0.1).toFixed(2)} per point at checkout</li>
           </ul>
         </div>
 

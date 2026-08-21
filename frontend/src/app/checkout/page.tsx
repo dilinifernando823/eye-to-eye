@@ -4,7 +4,6 @@ import { useEffect, useState, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useQuery } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
@@ -19,15 +18,13 @@ import {
 import { checkoutSchema, type CheckoutFormData } from '@/lib/validations'
 import { useCartStore } from '@/store/cartStore'
 import { useAuthStore } from '@/store/authStore'
+import { useLoyaltyBalance } from '@/hooks/useLoyalty'
 import { formatPrice } from '@/lib/utils'
 import Input from '@/components/ui/Input'
 import api from '@/lib/api'
 import { getErrorMessage } from '@/lib/errors'
 
 type Step = 1 | 2 | 3 | 'success'
-
-// Must match backend POINTS_TO_LKR (app/routers/orders.py)
-const LKR_PER_POINT = 0.1
 
 export default function CheckoutPage() {
   const router = useRouter()
@@ -56,14 +53,7 @@ export default function CheckoutPage() {
     }
   }, [isAuthenticated, items.length, step, router])
 
-  const { data: loyaltyBalance } = useQuery({
-    queryKey: ['loyalty-balance'],
-    queryFn: async () => {
-      const { data } = await api.get<{ balance: number }>('/api/loyalty/balance')
-      return data
-    },
-    enabled: isAuthenticated,
-  })
+  const { data: loyaltyBalance } = useLoyaltyBalance()
 
   const form = useForm<CheckoutFormData>({
     resolver: zodResolver(checkoutSchema),
@@ -71,7 +61,8 @@ export default function CheckoutPage() {
 
   const subtotal = totalPrice()
   const deliveryFee = subtotal >= 5000 ? 0 : 350
-  const pointsValue = Number(loyaltyPoints) * LKR_PER_POINT
+  const redeemRate = loyaltyBalance?.redeem_rate ?? 0.1
+  const pointsValue = Number(loyaltyPoints) * redeemRate
   const total = Math.max(0, subtotal + deliveryFee - pointsValue)
 
   const availablePoints = loyaltyBalance?.balance ?? 0
@@ -300,7 +291,7 @@ export default function CheckoutPage() {
               </h2>
               <p className="text-sm text-gray-500 mb-4">
                 You have <span className="font-semibold text-blue-700">{availablePoints} points</span> available
-                (worth {formatPrice(availablePoints * LKR_PER_POINT)})
+                (worth {formatPrice(availablePoints * redeemRate)})
               </p>
               <div className="flex gap-3 items-start">
                 <div className="flex-1">

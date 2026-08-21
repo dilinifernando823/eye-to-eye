@@ -7,6 +7,9 @@ interface LoyaltyBalance {
   balance: number
   total_earned: number
   total_redeemed: number
+  redeemable_value: number
+  earn_rate: number
+  redeem_rate: number
 }
 
 export function useLoyaltyBalance() {
