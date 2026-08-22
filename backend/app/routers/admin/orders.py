@@ -10,12 +10,14 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
 from app.models.order import Order, OrderItem
+from app.models.prescription import Prescription
 from app.models.product import Product, ProductVariant
 from app.models.user import User
 from app.schemas.admin import (
     AdminOrderDetail,
     AdminOrderItemDetail,
     AdminOrderListItem,
+    AdminOrderPrescriptionDetail,
     OrderStatusUpdateRequest,
     PaginatedResponse,
 )
@@ -39,6 +41,17 @@ def _order_detail_query() -> Select:
         .joinedload(ProductVariant.product)
         .joinedload(Product.images),
     )
+
+
+def _get_prescription_detail(db: Session, prescription_id: int | None) -> AdminOrderPrescriptionDetail | None:
+    if prescription_id is None:
+        return None
+    prescription = db.execute(
+        select(Prescription).where(Prescription.id == prescription_id)
+    ).scalar_one_or_none()
+    if prescription is None:
+        return None
+    return AdminOrderPrescriptionDetail.model_validate(prescription)
 
 
 def _apply_filters(
@@ -75,13 +88,13 @@ def _to_list_item(order: Order) -> AdminOrderListItem:
         status=order.status,
         total=order.total,
         items_count=len(order.items),
-        has_prescription=bool(order.prescription_url),
+        has_prescription=bool(order.prescription_id or order.prescription_url),
         created_at=order.created_at,
         updated_at=order.updated_at,
     )
 
 
-def _to_detail(order: Order) -> AdminOrderDetail:
+def _to_detail(order: Order, db: Session) -> AdminOrderDetail:
     return AdminOrderDetail(
         id=order.id,
         order_reference=order.order_reference,
@@ -101,6 +114,7 @@ def _to_detail(order: Order) -> AdminOrderDetail:
         delivery_phone=order.delivery_phone,
         prescription_url=order.prescription_url,
         prescription_notes=order.prescription_notes,
+        prescription=_get_prescription_detail(db, order.prescription_id),
         items=[
             AdminOrderItemDetail(
                 id=item.id,
@@ -231,7 +245,7 @@ def get_order(order_id: int, db: Session = Depends(get_db)) -> AdminOrderDetail:
     ).unique().scalar_one_or_none()
     if order is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
-    return _to_detail(order)
+    return _to_detail(order, db)
 
 
 @router.patch("/{order_id}/status", response_model=AdminOrderDetail)
@@ -257,4 +271,4 @@ def update_order_status(
     order = db.execute(
         _order_detail_query().where(Order.id == order_id)
     ).unique().scalar_one()
-    return _to_detail(order)
+    return _to_detail(order, db)
