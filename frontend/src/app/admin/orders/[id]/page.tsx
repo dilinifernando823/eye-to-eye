@@ -136,19 +136,60 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             </div>
           </div>
 
-          {order.prescription_url && (
+          {(order.prescription || order.prescription_url) && (
             <div className="bg-white rounded-xl shadow-md p-6">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="font-bold text-[#1a1a2e]">Prescription</h2>
-                <a
-                  href={order.prescription_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-2 text-sm font-medium text-[#e94560] hover:underline"
-                >
-                  <FileText className="h-4 w-4" /> View Prescription
-                </a>
+                {order.prescription_url && (
+                  <a
+                    href={order.prescription_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-2 text-sm font-medium text-[#e94560] hover:underline"
+                  >
+                    <FileText className="h-4 w-4" /> View File
+                  </a>
+                )}
               </div>
+
+              {order.prescription && (
+                <div className="mb-4">
+                  {order.prescription.recommended_lens_types && (
+                    <p className="text-sm font-medium text-[#1a1a2e] mb-2">
+                      Recommended: {order.prescription.recommended_lens_types.join(', ')}
+                    </p>
+                  )}
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-gray-400">
+                        <th className="text-left font-medium pb-1">Eye</th>
+                        <th className="text-center font-medium pb-1">SPH</th>
+                        <th className="text-center font-medium pb-1">CYL</th>
+                        <th className="text-center font-medium pb-1">Axis</th>
+                        <th className="text-center font-medium pb-1">ADD</th>
+                      </tr>
+                    </thead>
+                    <tbody className="font-mono text-gray-700">
+                      <tr className="border-t border-gray-100">
+                        <td className="py-1.5 font-sans font-medium">Right</td>
+                        <td className="text-center">{order.prescription.right_sph || '—'}</td>
+                        <td className="text-center">{order.prescription.right_cyl || '—'}</td>
+                        <td className="text-center">{order.prescription.right_axis || '—'}</td>
+                        <td className="text-center">{order.prescription.right_add || '—'}</td>
+                      </tr>
+                      <tr className="border-t border-gray-100">
+                        <td className="py-1.5 font-sans font-medium">Left</td>
+                        <td className="text-center">{order.prescription.left_sph || '—'}</td>
+                        <td className="text-center">{order.prescription.left_cyl || '—'}</td>
+                        <td className="text-center">{order.prescription.left_axis || '—'}</td>
+                        <td className="text-center">{order.prescription.left_add || '—'}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <p className="text-xs text-gray-500 mt-2">PD: {order.prescription.pd || '—'}</p>
+                </div>
+              )}
+
               {order.prescription_notes && (
                 <pre className="bg-gray-50 rounded-lg p-3 text-xs text-gray-600 whitespace-pre-wrap font-mono">
                   {order.prescription_notes}
