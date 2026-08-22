@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from app.models.appointment import Appointment
     from app.models.loyalty import LoyaltyTransaction
     from app.models.order import CartItem, Order, WishlistItem
+    from app.models.prescription import Prescription
 
 
 class User(Base):
@@ -43,4 +44,9 @@ class User(Base):
     )
     loyalty_transactions: Mapped[list["LoyaltyTransaction"]] = relationship(
         back_populates="user"
+    )
+    prescriptions: Mapped[list["Prescription"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        order_by="Prescription.created_at.desc()",
     )
