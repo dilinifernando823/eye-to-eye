@@ -7,6 +7,7 @@ from app.database import get_db
 from app.models.prescription import Prescription
 from app.models.user import User
 from app.schemas.prescription import (
+    PrescriptionListResponse,
     PrescriptionManualInput,
     PrescriptionResponse,
     PrescriptionValuesInput,
@@ -151,4 +152,44 @@ def create_manual_prescription(
     db.commit()
     db.refresh(prescription)
 
+    return _with_matches(db, prescription)
+
+
+@router.get("/", response_model=list[PrescriptionListResponse])
+def list_prescriptions(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[Prescription]:
+    prescriptions = db.execute(
+        select(Prescription)
+        .where(Prescription.user_id == current_user.id)
+        .order_by(Prescription.created_at.desc())
+    ).scalars().all()
+    return list(prescriptions)
+
+
+@router.get("/active", response_model=PrescriptionWithMatchesResponse)
+def get_active_prescription(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    prescription = db.execute(
+        select(Prescription).where(
+            Prescription.user_id == current_user.id, Prescription.is_active == True  # noqa: E712
+        )
+    ).scalar_one_or_none()
+    if prescription is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="No active prescription"
+        )
+    return _with_matches(db, prescription)
+
+
+@router.get("/{prescription_id}", response_model=PrescriptionWithMatchesResponse)
+def get_prescription(
+    prescription_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    prescription = _get_owned_prescription(db, prescription_id, current_user.id)
     return _with_matches(db, prescription)
