@@ -99,6 +99,14 @@ export default function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
                   <ShoppingBag className="h-5 w-5" />
                   My Orders
                 </Link>
+                <Link
+                  href="/account/prescriptions"
+                  onClick={onClose}
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors font-medium"
+                >
+                  <Glasses className="h-5 w-5" />
+                  My Prescriptions
+                </Link>
                 <button
                   onClick={() => { clearUser(); onClose() }}
                   className="flex w-full items-center gap-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 transition-colors font-medium"
