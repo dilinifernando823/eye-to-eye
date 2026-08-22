@@ -120,6 +120,20 @@ export interface AdminOrderItemDetail {
   lens_type: string | null
 }
 
+export interface AdminOrderPrescriptionDetail {
+  id: number
+  right_sph: string | null
+  right_cyl: string | null
+  right_axis: string | null
+  right_add: string | null
+  left_sph: string | null
+  left_cyl: string | null
+  left_axis: string | null
+  left_add: string | null
+  pd: string | null
+  recommended_lens_types: string[] | null
+}
+
 export interface AdminOrderDetail {
   id: number
   order_reference: string
@@ -139,6 +153,7 @@ export interface AdminOrderDetail {
   delivery_phone: string
   prescription_url: string | null
   prescription_notes: string | null
+  prescription: AdminOrderPrescriptionDetail | null
   items: AdminOrderItemDetail[]
   created_at: string
   updated_at: string | null
