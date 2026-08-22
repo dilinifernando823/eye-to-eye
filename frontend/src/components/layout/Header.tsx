@@ -12,6 +12,7 @@ import {
   Menu,
   ChevronDown,
   Package,
+  Glasses,
   LogOut,
   X,
 } from 'lucide-react'
@@ -152,6 +153,14 @@ export default function Header() {
                         >
                           <Package className="h-4 w-4" />
                           My Orders
+                        </Link>
+                        <Link
+                          href="/account/prescriptions"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                        >
+                          <Glasses className="h-4 w-4" />
+                          My Prescriptions
                         </Link>
                         <button
                           onClick={() => { clearUser(); setIsUserMenuOpen(false) }}
