@@ -37,6 +37,9 @@ class Order(Base):
     delivery_address: Mapped[str] = mapped_column(Text, nullable=False)
     delivery_city: Mapped[str] = mapped_column(String(100), nullable=False)
     delivery_phone: Mapped[str] = mapped_column(String(20), nullable=False)
+    prescription_id: Mapped[int | None] = mapped_column(
+        ForeignKey("prescriptions.id", ondelete="SET NULL"), nullable=True
+    )
     prescription_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     prescription_cloudinary_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     prescription_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
