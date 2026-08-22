@@ -84,6 +84,22 @@ class AdminOrderListItem(BaseModel):
     updated_at: datetime | None
 
 
+class AdminOrderPrescriptionDetail(BaseModel):
+    id: int
+    right_sph: str | None
+    right_cyl: str | None
+    right_axis: str | None
+    right_add: str | None
+    left_sph: str | None
+    left_cyl: str | None
+    left_axis: str | None
+    left_add: str | None
+    pd: str | None
+    recommended_lens_types: list[str] | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class AdminOrderItemDetail(BaseModel):
     id: int
     variant_id: int
@@ -114,6 +130,7 @@ class AdminOrderDetail(BaseModel):
     delivery_phone: str
     prescription_url: str | None
     prescription_notes: str | None
+    prescription: AdminOrderPrescriptionDetail | None
     items: list[AdminOrderItemDetail]
     created_at: datetime
     updated_at: datetime | None
