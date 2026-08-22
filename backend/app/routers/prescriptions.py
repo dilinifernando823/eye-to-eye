@@ -193,3 +193,28 @@ def get_prescription(
 ) -> dict:
     prescription = _get_owned_prescription(db, prescription_id, current_user.id)
     return _with_matches(db, prescription)
+
+
+@router.patch("/{prescription_id}/set-active", response_model=PrescriptionResponse)
+def set_active_prescription(
+    prescription_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Prescription:
+    prescription = _get_owned_prescription(db, prescription_id, current_user.id)
+    prescription.is_active = True
+    _deactivate_others(db, current_user.id, keep_id=prescription.id)
+    db.commit()
+    db.refresh(prescription)
+    return prescription
+
+
+@router.delete("/{prescription_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_prescription(
+    prescription_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    prescription = _get_owned_prescription(db, prescription_id, current_user.id)
+    db.delete(prescription)
+    db.commit()
