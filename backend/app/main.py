@@ -10,6 +10,7 @@ from app.routers import (
     cart,
     loyalty,
     orders,
+    prescriptions,
     products,
     recommendations,
     wishlist,
@@ -37,6 +38,7 @@ app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 app.include_router(
     recommendations.router, prefix="/api/recommendations", tags=["recommendations"]
 )
+app.include_router(prescriptions.router, prefix="/api/prescriptions", tags=["prescriptions"])
 
 
 @app.get("/")
