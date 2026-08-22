@@ -22,6 +22,7 @@ def list_products(
     frame_material: str | None = Query(default=None),
     min_price: float | None = Query(default=None),
     max_price: float | None = Query(default=None),
+    lens_type: str | None = Query(default=None),
     sort_by: str = Query(default="newest"),
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
@@ -49,12 +50,14 @@ def list_products(
         query = query.where(
             or_(Product.name.ilike(f"%{search}%"), Product.brand.ilike(f"%{search}%"))
         )
-    if min_price is not None or max_price is not None:
+    if min_price is not None or max_price is not None or lens_type:
         query = query.join(ProductVariant, ProductVariant.product_id == Product.id)
         if min_price is not None:
             query = query.where(ProductVariant.price >= min_price)
         if max_price is not None:
             query = query.where(ProductVariant.price <= max_price)
+        if lens_type:
+            query = query.where(ProductVariant.lens_type == lens_type)
 
     if sort_by == "price_asc":
         query = query.join(
