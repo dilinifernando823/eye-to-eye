@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, Form, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
@@ -6,12 +6,11 @@ from app.core.dependencies import get_current_user
 from app.database import get_db
 from app.models.loyalty import LoyaltyTransaction
 from app.models.order import CartItem, Order, OrderItem
+from app.models.prescription import Prescription
 from app.models.product import Product, ProductVariant
 from app.models.user import User
 from app.schemas.order import OrderListResponse, OrderResponse
-from app.services.cloudinary_service import upload_prescription
 from app.services.email_service import send_order_confirmation
-from app.services.ocr_service import extract_prescription_text, format_prescription_notes
 
 router = APIRouter()
 
@@ -26,10 +25,20 @@ def create_order(
     delivery_city: str = Form(...),
     delivery_phone: str = Form(...),
     use_loyalty_points: int = Form(default=0),
-    prescription: UploadFile | None = File(default=None),
+    prescription_id: int | None = Form(default=None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, str | float | int]:
+    prescription: Prescription | None = None
+    if prescription_id is not None:
+        prescription = db.execute(
+            select(Prescription).where(Prescription.id == prescription_id)
+        ).scalar_one_or_none()
+        if prescription is None or prescription.user_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Prescription not found"
+            )
+
     cart_items = (
         db.execute(
             select(CartItem)
@@ -66,10 +75,6 @@ def create_order(
     total = max(0.0, subtotal - loyalty_discount)
     points_earned = int(total / LKR_PER_POINT_EARNED)
 
-    prescription_url: str | None = None
-    prescription_cloudinary_id: str | None = None
-    prescription_notes: str | None = None
-
     order_count = db.execute(select(func.count()).select_from(Order)).scalar_one()
     order_reference = f"ETE-{order_count + 1:05d}"
 
@@ -86,30 +91,20 @@ def create_order(
         delivery_city=delivery_city,
         delivery_phone=delivery_phone,
     )
-    db.add(order)
-    db.flush()
 
     if prescription is not None:
-        file_bytes = prescription.file.read()
-        try:
-            upload_result = upload_prescription(file_bytes, prescription.filename or "file", order.id)
-            prescription_url = upload_result["url"]
-            prescription_cloudinary_id = upload_result["public_id"]
-        except Exception:
-            prescription_url = None
-            prescription_cloudinary_id = None
+        order.prescription_id = prescription.id
+        order.prescription_url = prescription.file_url
+        order.prescription_notes = (
+            f"SPH R:{prescription.right_sph or '-'} L:{prescription.left_sph or '-'} | "
+            f"CYL R:{prescription.right_cyl or '-'} L:{prescription.left_cyl or '-'} | "
+            f"AXIS R:{prescription.right_axis or '-'} L:{prescription.left_axis or '-'} | "
+            f"ADD R:{prescription.right_add or '-'} L:{prescription.left_add or '-'} | "
+            f"PD:{prescription.pd or '-'}"
+        )
 
-        try:
-            extracted_text = extract_prescription_text(
-                file_bytes, prescription.filename or "file.jpg"
-            )
-            prescription_notes = format_prescription_notes(extracted_text) or None
-        except Exception:
-            prescription_notes = None
-
-        order.prescription_url = prescription_url
-        order.prescription_cloudinary_id = prescription_cloudinary_id
-        order.prescription_notes = prescription_notes
+    db.add(order)
+    db.flush()
 
     for cart_item in cart_items:
         db.add(
