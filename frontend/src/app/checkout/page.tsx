@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -8,17 +8,19 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   CheckCircle,
-  Upload,
   FileText,
   Gift,
   Package,
   ArrowRight,
   ChevronRight,
+  Glasses,
+  Plus,
 } from 'lucide-react'
 import { checkoutSchema, type CheckoutFormData } from '@/lib/validations'
 import { useCartStore } from '@/store/cartStore'
 import { useAuthStore } from '@/store/authStore'
 import { useLoyaltyBalance } from '@/hooks/useLoyalty'
+import { useActivePrescription } from '@/hooks/usePrescriptions'
 import { formatPrice } from '@/lib/utils'
 import Input from '@/components/ui/Input'
 import api from '@/lib/api'
@@ -31,13 +33,10 @@ export default function CheckoutPage() {
   const { isAuthenticated } = useAuthStore()
   const [step, setStep] = useState<Step>(1)
   const [deliveryData, setDeliveryData] = useState<CheckoutFormData | null>(null)
-  const [prescriptionFile, setPrescriptionFile] = useState<File | null>(null)
   const [loyaltyPoints, setLoyaltyPoints] = useState('')
   const [orderRef, setOrderRef] = useState('')
   const [isPlacing, setIsPlacing] = useState(false)
   const [placeError, setPlaceError] = useState('')
-  const [dragOver, setDragOver] = useState(false)
-  const fileRef = useRef<HTMLInputElement>(null)
 
   const { items, totalPrice, clearCart } = useCartStore()
 
@@ -54,6 +53,7 @@ export default function CheckoutPage() {
   }, [isAuthenticated, items.length, step, router])
 
   const { data: loyaltyBalance } = useLoyaltyBalance()
+  const { data: activePrescription } = useActivePrescription()
 
   const form = useForm<CheckoutFormData>({
     resolver: zodResolver(checkoutSchema),
@@ -66,12 +66,6 @@ export default function CheckoutPage() {
   const total = Math.max(0, subtotal + deliveryFee - pointsValue)
 
   const availablePoints = loyaltyBalance?.balance ?? 0
-
-  const handleFileChange = (file: File | null) => {
-    if (file && ['application/pdf', 'image/jpeg', 'image/png'].includes(file.type)) {
-      setPrescriptionFile(file)
-    }
-  }
 
   const placeOrder = async () => {
     if (!deliveryData) return
@@ -91,8 +85,8 @@ export default function CheckoutPage() {
       formData.append('delivery_city', deliveryData.delivery_city)
       formData.append('delivery_phone', deliveryData.delivery_phone)
       formData.append('use_loyalty_points', String(Number(loyaltyPoints) || 0))
-      if (prescriptionFile) {
-        formData.append('prescription', prescriptionFile)
+      if (activePrescription) {
+        formData.append('prescription_id', String(activePrescription.id))
       }
 
       const { data } = await api.post('/api/orders/', formData, {
@@ -238,49 +232,49 @@ export default function CheckoutPage() {
         {/* STEP 2 */}
         {step === 2 && (
           <div className="space-y-5">
-            {/* Prescription upload */}
+            {/* Prescription */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <h2 className="text-lg font-bold text-gray-900 mb-1 flex items-center gap-2">
                 <FileText className="h-5 w-5 text-blue-700" />
-                Prescription Upload
+                Prescription
               </h2>
               <p className="text-sm text-gray-500 mb-5">
                 Only required for prescription spectacles. Skip if not applicable.
               </p>
 
-              <div
-                onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFileChange(e.dataTransfer.files[0]) }}
-                onClick={() => fileRef.current?.click()}
-                className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200 ${
-                  dragOver
-                    ? 'border-blue-500 bg-blue-50'
-                    : prescriptionFile
-                    ? 'border-green-400 bg-green-50'
-                    : 'border-gray-300 hover:border-blue-400 hover:bg-gray-50'
-                }`}
-              >
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  className="hidden"
-                  onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
-                />
-                {prescriptionFile ? (
-                  <div className="flex items-center justify-center gap-2 text-green-700">
-                    <CheckCircle className="h-6 w-6" />
-                    <span className="font-medium">{prescriptionFile.name}</span>
+              {activePrescription ? (
+                <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl p-4">
+                  <Glasses className="h-6 w-6 text-green-600 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-green-800">
+                      {activePrescription.recommended_lens_types?.join(', ') ?? 'Prescription'} will be attached to this order
+                    </p>
+                    <p className="text-sm text-green-600 mt-0.5">
+                      From {activePrescription.original_filename ?? 'your manual entry'}
+                    </p>
                   </div>
-                ) : (
-                  <>
-                    <Upload className="h-10 w-10 text-gray-400 mx-auto mb-3" />
-                    <p className="font-medium text-gray-700">Drop your prescription here</p>
-                    <p className="text-sm text-gray-400 mt-1">or click to browse — PDF, JPG, PNG</p>
-                  </>
-                )}
-              </div>
+                  <Link
+                    href="/account/prescriptions"
+                    className="text-sm font-medium text-blue-700 hover:text-blue-800 flex-shrink-0"
+                  >
+                    Change
+                  </Link>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-xl p-4">
+                  <FileText className="h-6 w-6 text-gray-400 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-700">No prescription on file</p>
+                    <p className="text-sm text-gray-500 mt-0.5">Add one if you&apos;re ordering prescription lenses</p>
+                  </div>
+                  <Link
+                    href="/prescription"
+                    className="flex items-center gap-1.5 text-sm font-medium text-blue-700 hover:text-blue-800 flex-shrink-0"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Add
+                  </Link>
+                </div>
+              )}
             </div>
 
             {/* Loyalty points */}
