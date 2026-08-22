@@ -14,6 +14,7 @@ import {
   LogOut,
   Save,
   ChevronRight,
+  Glasses,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { profileSchema, type ProfileFormData } from '@/lib/validations'
@@ -24,6 +25,7 @@ import { getErrorMessage } from '@/lib/errors'
 const navItems = [
   { href: '/account', label: 'My Profile', icon: User },
   { href: '/account/orders', label: 'My Orders', icon: Package },
+  { href: '/account/prescriptions', label: 'My Prescriptions', icon: Glasses },
   { href: '/account/wishlist', label: 'My Wishlist', icon: Heart },
   { href: '/account/loyalty', label: 'Loyalty Points', icon: Gift },
   { href: '/account/appointments', label: 'My Appointments', icon: Calendar },
