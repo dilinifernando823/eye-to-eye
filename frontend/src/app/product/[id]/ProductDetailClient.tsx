@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
@@ -23,6 +23,7 @@ import {
   useRemoveFromWishlist,
   useWishlistItemIdByVariant,
 } from '@/hooks/useWishlist'
+import { useActivePrescription } from '@/hooks/usePrescriptions'
 import type { Product, ProductVariant } from '@/types'
 import VirtualTryOn from '@/components/ar/VirtualTryOn'
 import SimilarProductsSection from '@/components/shop/SimilarProductsSection'
@@ -46,6 +47,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
 
   const { addItem, openCart } = useCartStore()
   const { isAuthenticated } = useAuthStore()
+  const { data: activePrescription } = useActivePrescription()
   const wishlistItemIdByVariant = useWishlistItemIdByVariant()
   const wishlistItemId = selectedVariant
     ? wishlistItemIdByVariant.get(selectedVariant.id)
@@ -84,6 +86,20 @@ export default function ProductDetailClient({ product }: { product: Product }) {
     openCart()
     setTimeout(() => setAddedToCart(false), 2000)
   }
+
+  useEffect(() => {
+    if (!activePrescription?.recommended_lens_types?.length) return
+    const recommended = product.variants.find(
+      (v) =>
+        activePrescription.recommended_lens_types!.includes(v.lens_type) &&
+        v.stock_quantity > 0
+    )
+    if (recommended) {
+      setSelectedVariant(recommended)
+    }
+    // Only run when the active prescription first loads for this product.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePrescription?.id])
 
   const inStock = selectedVariant ? selectedVariant.stock_quantity > 0 : false
 
@@ -200,12 +216,14 @@ export default function ProductDetailClient({ product }: { product: Product }) {
               <div className="mb-5">
                 <p className="text-sm font-semibold text-gray-700 mb-3">Select Lens Type</p>
                 <div className="flex flex-wrap gap-2">
-                  {product.variants.map((v) => (
+                  {product.variants.map((v) => {
+                    const isRecommended = activePrescription?.recommended_lens_types?.includes(v.lens_type)
+                    return (
                     <button
                       key={v.id}
                       onClick={() => setSelectedVariant(v)}
                       disabled={v.stock_quantity === 0}
-                      className={`px-4 py-2.5 rounded-xl border-2 text-sm font-medium transition-all duration-200 ${
+                      className={`relative px-4 py-2.5 rounded-xl border-2 text-sm font-medium transition-all duration-200 ${
                         selectedVariant?.id === v.id
                           ? 'border-blue-700 bg-blue-700 text-white'
                           : v.stock_quantity === 0
@@ -213,10 +231,16 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                           : 'border-gray-300 text-gray-700 hover:border-blue-400'
                       }`}
                     >
+                      {isRecommended && (
+                        <span className="absolute -top-2 -right-2 bg-green-500 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
+                          For You
+                        </span>
+                      )}
                       {v.lens_type}
                       <span className="block text-xs opacity-75 mt-0.5">{formatPrice(v.price)}</span>
                     </button>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
 
