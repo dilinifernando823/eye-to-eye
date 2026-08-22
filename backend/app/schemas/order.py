@@ -46,6 +46,7 @@ class OrderResponse(BaseModel):
     delivery_address: str
     delivery_city: str
     delivery_phone: str
+    prescription_id: int | None
     prescription_url: str | None
     prescription_notes: str | None
     created_at: datetime
