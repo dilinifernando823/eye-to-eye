@@ -14,6 +14,7 @@ from app.models import (  # noqa: F401
     LoyaltyTransaction,
     Order,
     OrderItem,
+    Prescription,
     Product,
     ProductImage,
     ProductVariant,
