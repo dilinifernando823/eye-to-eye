@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, File, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -9,6 +9,7 @@ from app.models.user import User
 from app.schemas.prescription import (
     PrescriptionManualInput,
     PrescriptionResponse,
+    PrescriptionValuesInput,
     PrescriptionWithMatchesResponse,
 )
 from app.services.cloudinary_service import upload_prescription
@@ -48,6 +49,17 @@ def _deactivate_others(db: Session, user_id: int, keep_id: int | None = None) ->
     ).scalars().all()
     for other in others:
         other.is_active = False
+
+
+def _get_owned_prescription(db: Session, prescription_id: int, user_id: int) -> Prescription:
+    prescription = db.execute(
+        select(Prescription).where(Prescription.id == prescription_id)
+    ).scalar_one_or_none()
+    if prescription is None or prescription.user_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Prescription not found"
+        )
+    return prescription
 
 
 def _with_matches(db: Session, prescription: Prescription) -> dict:
@@ -95,6 +107,25 @@ def upload_prescription_file(
     db.add(prescription)
     db.flush()
     _deactivate_others(db, current_user.id, keep_id=prescription.id)
+    db.commit()
+    db.refresh(prescription)
+
+    return _with_matches(db, prescription)
+
+
+@router.put("/{prescription_id}/values", response_model=PrescriptionWithMatchesResponse)
+def update_prescription_values(
+    prescription_id: int,
+    payload: PrescriptionValuesInput,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    prescription = _get_owned_prescription(db, prescription_id, current_user.id)
+
+    for field, value in payload.model_dump().items():
+        setattr(prescription, field, value)
+
+    _apply_recommendation(db, prescription)
     db.commit()
     db.refresh(prescription)
 
