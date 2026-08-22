@@ -76,11 +76,69 @@ export interface Order {
   delivery_address: string
   delivery_city: string
   delivery_phone: string
+  prescription_id: number | null
   prescription_url: string | null
   prescription_notes: string | null
   created_at: string
   updated_at: string | null
   items: OrderItem[]
+}
+
+export interface PrescriptionEye {
+  sph: string | null
+  cyl: string | null
+  axis: string | null
+  add: string | null
+}
+
+export interface PrescriptionValuesInput {
+  right_sph?: string | null
+  right_cyl?: string | null
+  right_axis?: string | null
+  right_add?: string | null
+  left_sph?: string | null
+  left_cyl?: string | null
+  left_axis?: string | null
+  left_add?: string | null
+  pd?: string | null
+}
+
+export interface MatchingVariant extends ProductVariant {
+  product: ProductMini
+}
+
+export interface Prescription {
+  id: number
+  user_id: number
+  file_url: string | null
+  original_filename: string | null
+  ocr_success: boolean
+  right_sph: string | null
+  right_cyl: string | null
+  right_axis: string | null
+  right_add: string | null
+  left_sph: string | null
+  left_cyl: string | null
+  left_axis: string | null
+  left_add: string | null
+  pd: string | null
+  recommended_lens_types: string[] | null
+  lens_recommendation_reason: string | null
+  advice_message: string | null
+  has_match: boolean
+  is_active: boolean
+  created_at: string
+  updated_at: string | null
+  matching_variants: MatchingVariant[]
+}
+
+export interface PrescriptionListItem {
+  id: number
+  original_filename: string | null
+  recommended_lens_types: string[] | null
+  has_match: boolean
+  is_active: boolean
+  created_at: string
 }
 
 export interface OrderListItem {
