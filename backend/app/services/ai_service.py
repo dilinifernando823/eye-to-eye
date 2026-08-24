@@ -101,12 +101,16 @@ def get_chat_response(
     ]
 
     chat = client.chats.create(
-        model="gemini-2.0-flash",
+        model="gemini-3.6-flash",
         config=types.GenerateContentConfig(
             system_instruction=SYSTEM_PROMPT + _build_customer_context(customer_context),
             temperature=0.7,
-            max_output_tokens=500,
+            max_output_tokens=1024,
             top_p=0.95,
+            # A support chatbot needs short factual answers, not deep reasoning —
+            # "low" keeps replies fast and prevents thinking tokens from eating
+            # the entire output budget before the actual answer is written.
+            thinking_config=types.ThinkingConfig(thinking_level="low"),
         ),
         history=history,
     )
