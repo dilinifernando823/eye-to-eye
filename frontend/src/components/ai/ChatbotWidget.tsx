@@ -5,6 +5,13 @@ import { MessageCircle, X, Send, Bot } from 'lucide-react'
 import api from '@/lib/api'
 import type { ChatMessage } from '@/types'
 
+const QUICK_REPLIES = [
+  'What lens types do you offer?',
+  'How do I book an eye test?',
+  'What is your return policy?',
+  'How do loyalty points work?',
+]
+
 export default function ChatbotWidget() {
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -25,8 +32,8 @@ export default function ChatbotWidget() {
     }
   }, [isOpen, messages])
 
-  const sendMessage = async () => {
-    const text = input.trim()
+  const sendMessage = async (overrideText?: string) => {
+    const text = (overrideText ?? input).trim()
     if (!text || isTyping) return
 
     const userMsg: ChatMessage = { role: 'user', content: text }
@@ -71,8 +78,8 @@ export default function ChatbotWidget() {
                 <Bot className="h-4 w-4 text-white" />
               </div>
               <div>
-                <p className="text-white font-semibold text-sm">Eye To Eye Assistant</p>
-                <p className="text-blue-200 text-xs">Online</p>
+                <p className="text-white font-semibold text-sm">Iris</p>
+                <p className="text-blue-200 text-xs">Eye To Eye Assistant</p>
               </div>
             </div>
             <button
@@ -123,6 +130,22 @@ export default function ChatbotWidget() {
             <div ref={messagesEndRef} />
           </div>
 
+          {/* Quick replies — shown only before the first exchange */}
+          {messages.length === 1 && (
+            <div className="px-3 pt-2 pb-1 bg-white border-t border-gray-100 flex flex-wrap gap-1.5">
+              {QUICK_REPLIES.map((reply) => (
+                <button
+                  key={reply}
+                  onClick={() => sendMessage(reply)}
+                  disabled={isTyping}
+                  className="text-xs bg-white border border-blue-200 text-blue-700 px-2.5 py-1 rounded-full hover:bg-blue-50 transition-colors disabled:opacity-50"
+                >
+                  {reply}
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Input */}
           <div className="p-3 border-t border-gray-200 bg-white flex items-center gap-2">
             <input
@@ -135,7 +158,7 @@ export default function ChatbotWidget() {
               className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
             <button
-              onClick={sendMessage}
+              onClick={() => sendMessage()}
               disabled={!input.trim() || isTyping}
               className="p-2 bg-blue-700 text-white rounded-xl hover:bg-blue-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0"
               aria-label="Send message"
