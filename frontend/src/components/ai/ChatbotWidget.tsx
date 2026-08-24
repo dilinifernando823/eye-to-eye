@@ -36,10 +36,10 @@ export default function ChatbotWidget() {
 
     try {
       const allMessages = [...messages, userMsg]
-      const { data } = await api.post<{ message: string }>('/api/ai/chat', {
+      const { data } = await api.post<{ response: string }>('/api/ai/chat', {
         messages: allMessages,
       })
-      setMessages((prev) => [...prev, { role: 'assistant', content: data.message }])
+      setMessages((prev) => [...prev, { role: 'assistant', content: data.response }])
     } catch {
       setMessages((prev) => [
         ...prev,
