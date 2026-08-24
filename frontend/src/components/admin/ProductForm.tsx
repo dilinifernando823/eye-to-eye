@@ -55,7 +55,6 @@ export default function ProductForm({ defaultValues, onSubmit, submitLabel }: Pr
   const {
     register,
     handleSubmit,
-    watch,
     control,
     formState: { errors, isDirty },
   } = useForm<AdminProductFormValues>({
@@ -64,7 +63,6 @@ export default function ProductForm({ defaultValues, onSubmit, submitLabel }: Pr
   })
 
   const { fields, append, remove } = useFieldArray({ control, name: 'variants' })
-  const hasModel = watch('has_3d_model')
 
   const submit = async (values: AdminProductFormValues) => {
     setSubmitting(true)
@@ -257,33 +255,21 @@ export default function ProductForm({ defaultValues, onSubmit, submitLabel }: Pr
         </div>
       </section>
 
-      {/* Section 4 — 3D / Virtual Try-On */}
+      {/* Section 4 — Virtual Try-On */}
       <section className="bg-white rounded-xl shadow-md p-6">
-        <h2 className="font-bold text-[#1a1a2e] mb-4">3D / Virtual Try-On</h2>
+        <h2 className="font-bold text-[#1a1a2e] mb-4">Virtual Try-On</h2>
+        <input type="hidden" {...register('gltf_model_url')} />
         <label className="flex items-center gap-3 cursor-pointer mb-4">
           <input type="checkbox" {...register('has_3d_model')} className="sr-only peer" />
           <span className="relative w-10 h-5 rounded-full bg-gray-200 peer-checked:bg-[#e94560] transition-colors">
             <span className="absolute top-0.5 left-0.5 h-4 w-4 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5" />
           </span>
-          <span className="text-sm font-medium text-gray-700">Has 3D Model for Try-On</span>
+          <span className="text-sm font-medium text-gray-700">Enable Virtual Try-On</span>
         </label>
 
-        {hasModel && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              GLTF Model URL
-            </label>
-            <input
-              {...register('gltf_model_url')}
-              placeholder="https://res.cloudinary.com/.../model.glb"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#e94560] text-sm"
-            />
-          </div>
-        )}
-
-        <p className="text-xs text-gray-400 mt-3">
-          Upload the 3D model file to Cloudinary separately and paste the URL here. Mark one
-          product image as the Virtual Try-On preview image in the Images tab after saving.
+        <p className="text-xs text-gray-400">
+          Mark one product image as the Virtual Try-On preview image in the Images tab after
+          saving — that image is what customers see overlaid on their camera feed.
         </p>
       </section>
 
