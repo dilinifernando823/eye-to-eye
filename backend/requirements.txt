@@ -12,7 +12,7 @@ cloudinary
 pytesseract
 Pillow
 pdf2image
-anthropic
+google-genai>=1.0.0
 python-dotenv
 pydantic-settings
 pydantic[email]
